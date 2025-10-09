@@ -5,6 +5,10 @@ pub const RateState = packed struct {
     current: i32 = 60,
     hight: i32 = 60,
     low: i32 = 20,
+
+    pub fn getScaler(self: *@This()) f32 {
+        return 1 / @as(f32, @floatFromInt(self.current));
+    }
 };
 
 pub const LoopState = struct {
