@@ -3,9 +3,14 @@ const rl = @import("raylib");
 
 pub const RateState = packed struct {
     current: i32 = 60,
-    hight: i32 = 99999,
+    hight: i32 = 60,
     low: i32 = 20,
 
+    pub fn copy(self: *@This(), other: *const @This()) void {
+        self.current = other.current;
+        self.hight = other.hight;
+        self.low = other.low;
+    }
     pub fn getScaler(self: *@This()) f32 {
         return 1 / @as(f32, @floatFromInt(self.current));
     }
@@ -30,13 +35,13 @@ pub const LoopState = struct {
     }
 
     pub fn updateTickreate(self: *@This(), new: RateState) void {
-        self.tickrate = new;
+        self.tickrate.copy(&new);
         self.tickrate.current = if (self.focused) self.tickrate.hight else self.tickrate.low;
     }
 
     pub fn updateFramerate(self: *@This(), new: RateState) void {
         const pre = self.framerate;
-        self.framerate = new;
+        self.framerate.copy(&new);
         self.framerate.current = if (self.focused) self.framerate.hight else self.framerate.low;
         if (!std.meta.eql(pre, self.framerate)) {
             rl.setTargetFPS(self.framerate.current);

@@ -1,10 +1,11 @@
 const rl = @import("raylib");
 const std = @import("std");
+const loop = @import("../loop.zig");
 
 pub const BallState = struct {
     position: rl.Vector2 = .init(0, 0),
     force: rl.Vector2 = .init(0, 0),
-    scale: f32 = 0.08,
+    loopstate: *loop.LoopState,
     friction: f32 = 0.001,
     boundry: rl.Vector4 = .init(0, 0, std.math.floatMax(f32), std.math.floatMax(f32)),
     color: rl.Color = .white,
@@ -32,18 +33,22 @@ pub const BallState = struct {
 
     fn colisionBoundryH(s: *@This(), force: rl.Vector2) bool {
         const y = s.position.y + force.y;
-        return (s.boundry.y > y - s.width or s.boundry.w < y + s.width);
+        return (s.boundry.y > y - s.width and s.force.y < 0) or (s.boundry.w < y + s.width and s.force.y > 0);
     }
     fn colisionBoundryV(s: *@This(), force: rl.Vector2) bool {
         const x = s.position.x + force.x;
-        return (s.boundry.x > x - s.width or s.boundry.z < x + s.width);
+        return (s.boundry.x > x - s.width and s.force.x < 0) or (s.boundry.z < x + s.width and s.force.x > 0);
     }
     fn applyFriction(s: *@This()) void {
-        s.force = s.force.scale(1 - s.friction * s.scale);
+        s.force = s.force.scale((1 - s.friction) * s.getScaler());
     }
 
     fn getMouse(s: *@This(), mouse: rl.Vector2) rl.Vector2 {
         return rl.Vector2.init(s.getMouseX(mouse), s.getMouseY(mouse));
+    }
+    inline fn getScaler(s: *@This()) f32 {
+        _ = s;
+        return 0.999;
     }
     pub fn update(s: *@This(), allow_interaction: bool) void {
         const mouse = s.getMouse(rl.getMousePosition());
@@ -55,7 +60,8 @@ pub const BallState = struct {
             }
         } else s.is_hold = false;
         s.applyFriction();
-        const v = s.force.scale(s.scale);
+        const scale = s.getScaler();
+        const v = s.force.scale(scale);
         if (s.colisionBoundryH(v)) {
             s.force.y = -s.force.y;
             s.applyFriction();
@@ -67,14 +73,14 @@ pub const BallState = struct {
         }
 
         s.position = s.position.moveTowards(
-            s.force.scale(s.scale).add(s.position),
+            s.force.scale(scale).add(s.position),
             s.width,
         );
         // s.position.x += (s.mouse.x - s.position.x) * s.force;
         // s.position.y += (s.mouse.y - s.position.y) * s.force;
     }
-    pub fn init() @This() {
-        return .{};
+    pub fn init(loopstate: *loop.LoopState) @This() {
+        return .{ .loopstate = loopstate };
     }
     pub fn draw(s: *@This()) void {
         const force = s.force;

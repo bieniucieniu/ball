@@ -7,13 +7,10 @@ const meta = std.meta;
 const bufPrint = std.fmt.bufPrint;
 
 pub fn run() !void {
-    // Initialization
-    //--------------------------------------------------------------------------------------
-    //
-    //
     var gpa: std.heap.GeneralPurposeAllocator(.{}) = .init;
     const allocator = gpa.allocator();
-    var state: GameState = try .init(allocator, 2137);
+    var state: GameState = try .init(allocator, 1);
+    try state.appendBalls(1);
 
     rl.setConfigFlags(.{
         .window_resizable = true,
@@ -51,12 +48,7 @@ const GameState = struct {
     height: i32 = 450,
     backgroup_color: rl.Color = .white,
     balls: std.ArrayList(BallState),
-    fn updateRate(self: *@This()) void {
-        const s = self.loop.tickrate.getScaler();
-        for (self.balls.items) |*ball| {
-            ball.scale = s;
-        }
-    }
+
     inline fn sleepToNext(self: *@This()) void {
         self.loop.sleepToNext();
     }
@@ -67,26 +59,29 @@ const GameState = struct {
     }
 
     fn init(allocactor: std.mem.Allocator, balls: usize) !@This() {
-        var state: @This() = .{ .arena = std.heap.ArenaAllocator.init(allocactor), .balls = try std.ArrayList(BallState).initCapacity(allocactor, @max(64, balls)), .loop = .init() };
-        const alloc = state.arena.allocator();
+        return .{
+            .arena = std.heap.ArenaAllocator.init(allocactor),
+            .balls = try std.ArrayList(BallState).initCapacity(allocactor, @max(64, balls)),
+            .loop = .init(),
+        };
+    }
+    fn appendBalls(s: *@This(), count: usize) !void {
+        const alloc = s.arena.allocator();
         var prng = std.Random.DefaultPrng.init(blk: {
             var seed: u64 = undefined;
             try std.posix.getrandom(std.mem.asBytes(&seed));
             break :blk seed;
         });
         const rand = prng.random();
-        for (0..balls) |i| {
-            var ball: BallState = .init();
-            _ = i;
+        for (0..count) |_| {
+            var ball: BallState = .init(&s.loop);
             ball.position = .init(
-                @as(f32, @floatFromInt(state.width)) / 2 + @as(f32, @floatFromInt(0 * 24)),
-                @max(@as(f32, @floatFromInt(state.height)) / 2, 256 + 24) + @as(f32, @floatFromInt(0 * 24)),
+                @as(f32, @floatFromInt(s.width)) / 2 + @as(f32, @floatFromInt(0 * 24)),
+                @max(@as(f32, @floatFromInt(s.height)) / 2, 256 + 24) + @as(f32, @floatFromInt(0 * 24)),
             );
             ball.force = rl.Vector2.one().scale(100).rotate(rand.float(f32) * 360);
-            try state.balls.append(alloc, ball);
+            try s.balls.append(alloc, ball);
         }
-        state.updateRate();
-        return state;
     }
 
     fn deinit(s: *@This()) void {
@@ -106,14 +101,15 @@ const GameState = struct {
         }
     }
     fn draw(s: *@This()) void {
-        if (rg.button(.init(24, 24, 120, 24), "btn")) s.swapBackgroud();
-        rl.drawText(rl.textFormat("%d", .{s.balls.items.len}), 24, 152, 32, .gray);
         rl.clearBackground(s.backgroup_color);
+        if (rg.button(.init(24, 24, 120, 24), "btn")) s.swapBackgroud();
+        //       rl.drawText(rl.textFormat("%d %d", .{ s.balls.items.len, s.loop.tickrate.current }), 24, 152, 32, .gray);
         const txt = rl.textFormat("fps = %d", .{rl.getFPS()});
         rl.setWindowTitle(txt);
-        _ = rg.windowBox(.init(24, 24, 120, 60), "asdljkashldkjas");
 
         for (s.balls.items) |*ball| {
+            if (rg.button(.init(120, 24, 120, 24), "btn")) s.swapBackgroud();
+            rl.drawText(rl.textFormat("%f %f %d %d", .{ ball.force.x, ball.force.y, ball.loopstate.tickrate.current, s.loop.tickrate.current }), 24, 152, 32, .gray);
             ball.draw();
         }
     }
