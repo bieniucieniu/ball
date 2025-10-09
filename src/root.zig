@@ -61,7 +61,7 @@ const GameState = struct {
         self.loop.update();
         self.width = rl.getScreenWidth();
         self.height = rl.getScreenHeight();
-        self.ball.updateBoundry(20, 20, @floatFromInt(self.width - 20), @floatFromInt(self.height - 20));
+        self.ball.updateBoundry(20, 256, @floatFromInt(self.width - 20), @floatFromInt(self.height - 20));
         self.ball.update();
     }
     fn swapBackgroud(self: *@This()) void {
@@ -70,7 +70,10 @@ const GameState = struct {
     }
 
     fn init() @This() {
-        return .{ .ball = .init(), .loop = .init() };
+        var state: @This() = .{ .ball = .init(), .loop = .init() };
+        state.ball.position = .init(@as(f32, @floatFromInt(state.width)) / 2, @max(@as(f32, @floatFromInt(state.height)) / 2, 256 + 24));
+        state.ball.target_positon = state.ball.position;
+        return state;
     }
     fn draw(s: *@This()) void {
         if (rg.button(.init(24, 24, 120, 24), "btn")) s.swapBackgroud();
@@ -92,7 +95,7 @@ const GameState = struct {
         rl.drawText(tr, 24, 152, 32, .gray);
 
         rl.clearBackground(s.backgroup_color);
-        const txt = rl.textFormat("fps = %d mouse = .{.x = %.0f, .y = %.0f} mouse.y = .{.x = %.0f, .y = %.0f}", .{ rl.getFPS(), s.ball.mouse.x, s.ball.mouse.y, s.ball.position.x, s.ball.position.y });
+        const txt = rl.textFormat("fps = %d mouse = .{.x = %.0f, .y = %.0f} mouse.y = .{.x = %.0f, .y = %.0f}", .{ rl.getFPS(), s.ball.target_positon.x, s.ball.target_positon.y, s.ball.position.x, s.ball.position.y });
         rl.setWindowTitle(txt);
 
         s.ball.draw();
