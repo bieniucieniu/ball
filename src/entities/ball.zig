@@ -3,15 +3,19 @@ const std = @import("std");
 const loop = @import("../loop.zig");
 
 pub const BallState = struct {
+    loopstate: *loop.LoopState,
+
     position: rl.Vector2 = .init(0, 0),
     force: rl.Vector2 = .init(0, 0),
-    loopstate: *loop.LoopState,
+    next_position: ?rl.Vector2 = null,
+
+    width: f32 = 12,
     friction: f32 = 0.001,
     mass: f32 = 30,
+
     boundry: *rl.Vector4,
     color: rl.Color = .white,
     border_color: rl.Color = .gray,
-    width: f32 = 12,
     border_width: f32 = 2,
     is_hold: bool = false,
 
@@ -46,7 +50,7 @@ pub const BallState = struct {
         return target.y + s.width >= s.boundry.w;
     }
 
-    const BoundiesCrossed = packed struct(u4) {
+    const BoundriesCrossed = packed struct(u4) {
         left: bool,
         right: bool,
         top: bool,
@@ -60,7 +64,7 @@ pub const BallState = struct {
             return self.top or self.bottom;
         }
     };
-    fn boundriesCrossed(s: *@This(), target: rl.Vector2) BoundiesCrossed {
+    fn boundriesCrossed(s: *@This(), target: rl.Vector2) BoundriesCrossed {
         return .{
             .left = s.boundryLeft(target),
             .right = s.boundryRight(target),
@@ -119,32 +123,38 @@ pub const BallState = struct {
     }
 
     pub fn checkRayColision(s: *@This(), other: *@This()) ?rl.Vector2 {
-        const sc = s.getScaler();
-        const rays = raysIntersection(s.position, s.force.scale(sc), other.position, other.force.scale(sc));
+        const rays = raysIntersection(s.position, s.getNextPosition().*, other.position, other.getNextPosition().*);
         return rays;
     }
     pub fn checkColision(s: *@This(), other: *@This()) ?rl.Vector2 {
         return checkIntersection(s, other) orelse checkRayColision(s, other);
     }
-    pub fn update(s: *@This(), allow_interaction: bool) void {
-        s.updateForceVector(allow_interaction);
-        s.applyFriction();
+    pub fn getNextPosition(s: *@This()) *rl.Vector2 {
+        if (s.next_position) |*p| return p;
         const scaler = s.getScaler();
         const vec = s.force.scale(scaler);
-        var target = s.position.add(vec);
-        s.applyBoundryColisions(&target);
-        s.position = target;
+        s.next_position = s.position.add(vec);
+        if (s.next_position) |*p| return p else unreachable;
+    }
+    pub fn update(s: *@This(), allow_interaction: bool) void {
+        defer s.next_position = null;
+        s.updateForceVector(allow_interaction);
+        s.applyFriction();
+        const target = s.getNextPosition();
+        s.applyBoundryColisions(target);
+        s.position = target.*;
     }
     pub fn init(loopstate: *loop.LoopState, boundry: *rl.Vector4) @This() {
         return .{ .loopstate = loopstate, .boundry = boundry };
     }
     pub fn draw(s: *@This()) void {
         const force = s.force;
+        const scale = s.getScaler();
         rl.drawLine(
             @intFromFloat(s.position.x),
             @intFromFloat(s.position.y),
-            @intFromFloat(s.position.x + force.x),
-            @intFromFloat(s.position.y + force.y),
+            @intFromFloat(s.position.x + force.x * scale),
+            @intFromFloat(s.position.y + force.y * scale),
             s.border_color,
         );
         rl.drawCircle(
