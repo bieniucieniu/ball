@@ -7,6 +7,7 @@ pub const BallState = struct {
     force: rl.Vector2 = .init(0, 0),
     loopstate: *loop.LoopState,
     friction: f32 = 0.001,
+    mass: f32 = 30,
     boundry: *rl.Vector4,
     color: rl.Color = .white,
     border_color: rl.Color = .gray,
@@ -76,12 +77,11 @@ pub const BallState = struct {
         return rl.Vector2.init(s.getMouseX(mouse), s.getMouseY(mouse));
     }
     inline fn getScaler(s: *@This()) f32 {
-        const m: f32 = 30;
         const per_s =
             if (s.loopstate.delta != 0)
-                s.loopstate.delta * m
+                s.loopstate.delta * (1_000 / s.mass)
             else
-                m / @as(f32, @floatFromInt(s.loopstate.tickrate.current));
+                (1_000 / s.mass) / @as(f32, @floatFromInt(s.loopstate.tickrate.current));
         return per_s;
     }
     fn updateForceVector(s: *@This(), allow_interaction: bool) void {
@@ -108,10 +108,23 @@ pub const BallState = struct {
     fn applyColision(s: *@This(), other: *@This()) void {
         s.position.subtract(other.*);
     }
-    pub fn checkAndApplyColision(s: *@This(), other: *@This()) void {
-        if (s.position.distanceSqr(other.*) < std.math.pow(f32, s.width + other.width, 2)) {
-            s.applyColision(other);
-        }
+    pub fn checkIntersection(s: *@This(), other: *@This()) ?rl.Vector2 {
+        return if (s.position.distanceSqr(other.position) <= std.math.pow(f32, s.width + other.width, 2))
+            rl.Vector2.init(
+                (s.position.x + other.position.x) / 2,
+                (s.position.y + other.position.y) / 2,
+            )
+        else
+            null;
+    }
+
+    pub fn checkRayColision(s: *@This(), other: *@This()) ?rl.Vector2 {
+        const sc = s.getScaler();
+        const rays = raysIntersection(s.position, s.force.scale(sc), other.position, other.force.scale(sc));
+        return rays;
+    }
+    pub fn checkColision(s: *@This(), other: *@This()) ?rl.Vector2 {
+        return checkIntersection(s, other) orelse checkRayColision(s, other);
     }
     pub fn update(s: *@This(), allow_interaction: bool) void {
         s.updateForceVector(allow_interaction);
@@ -149,4 +162,17 @@ pub const BallState = struct {
     }
 };
 
-fn rayInstersect(a: rl.Vector2, b: rl.Vector2) void {}
+fn raysIntersection(as: rl.Vector2, ad: rl.Vector2, bs: rl.Vector2, bd: rl.Vector2) ?rl.Vector2 {
+    if (as.equals(bs) != 0) return as;
+    const dx = bs.x - as.x;
+    const dy = bs.y - as.y;
+    const det = bd.x * ad.y - bd.y * ad.x;
+    if (det != 0) { // near parallel line will yield noisy results
+        const u = (dy * bd.x - dx * bd.y) / det;
+        const v = (dy * ad.x - dx * ad.y) / det;
+        if (u >= 0 and u <= 1 and v >= 0 and v <= 1) {
+            return as.add(ad).scale(u);
+        }
+    }
+    return null;
+}

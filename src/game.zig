@@ -41,6 +41,8 @@ pub const GameState = struct {
                 (s.balls_boundry.y + s.balls_boundry.w) / 2,
             );
             ball.force = rl.Vector2.one().scale(100).rotate(rand.float(f32) * 360);
+            ball.mass = (rand.float(f32) * 600) + 600;
+            ball.width = ball.mass / 200;
             try s.balls.append(alloc, ball);
         }
     }
@@ -61,11 +63,18 @@ pub const GameState = struct {
         s.height = rl.getScreenHeight();
         s.balls_boundry = .init(20, 64, @floatFromInt(s.width - 20), @floatFromInt(s.height - 20));
         var allow_interaction = true;
-        for (s.balls.items) |*ball| {
+        for (s.balls.items, 0..) |*ball, i| {
             ball.boundry = &s.balls_boundry;
+            ball.border_color = .gray;
             ball.update(allow_interaction);
             if (allow_interaction)
                 allow_interaction = !ball.is_hold;
+            inner: for (s.balls.items[(i + 1)..]) |*other|
+                if (ball.checkColision(other) != null) {
+                    ball.border_color = .blue;
+                    other.border_color = .blue;
+                    break :inner;
+                };
         }
     }
     pub fn draw(s: *@This()) void {
