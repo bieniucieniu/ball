@@ -2,9 +2,9 @@ const std = @import("std");
 const rl = @import("raylib");
 
 pub const RateState = packed struct {
-    current: i32 = 60,
-    hight: i32 = 60,
-    low: i32 = 20,
+    current: i32 = 0,
+    hight: i32 = std.math.maxInt(i32),
+    low: i32 = 30,
 
     pub fn copy(self: *@This(), other: *const @This()) void {
         self.current = other.current;
@@ -22,10 +22,14 @@ pub const LoopState = struct {
 
     timer: std.time.Timer,
     last_time: u64,
+    /// delta time secends
+    delta: f32 = 0,
     focused: bool = true,
 
     pub fn update(self: *@This()) void {
-        self.last_time = self.timer.read();
+        const new_time = self.timer.read();
+        self.delta = @as(f32, @floatFromInt(new_time - self.last_time)) / std.time.ns_per_s;
+        self.last_time = new_time;
         const current_focused = rl.isWindowFocused();
         if (self.focused != current_focused) {
             self.focused = current_focused;
