@@ -37,8 +37,8 @@ pub const GameState = struct {
                 &s.balls_boundry,
             );
             ball.position = .init(
-                @as(f32, @floatFromInt(s.width)) / 2 + @as(f32, @floatFromInt(0 * 24)),
-                @max(@as(f32, @floatFromInt(s.height)) / 2, 256 + 24) + @as(f32, @floatFromInt(0 * 24)),
+                (s.balls_boundry.x + s.balls_boundry.z) / 2,
+                (s.balls_boundry.y + s.balls_boundry.w) / 2,
             );
             ball.force = rl.Vector2.one().scale(100).rotate(rand.float(f32) * 360);
             try s.balls.append(alloc, ball);
@@ -59,7 +59,7 @@ pub const GameState = struct {
         s.loop.update();
         s.width = rl.getScreenWidth();
         s.height = rl.getScreenHeight();
-        s.balls_boundry = .init(20, 256, @floatFromInt(s.width - 20), @floatFromInt(s.height - 20));
+        s.balls_boundry = .init(20, 64, @floatFromInt(s.width - 20), @floatFromInt(s.height - 20));
         var allow_interaction = true;
         for (s.balls.items) |*ball| {
             ball.boundry = &s.balls_boundry;
@@ -69,7 +69,7 @@ pub const GameState = struct {
         }
     }
     pub fn draw(s: *@This()) void {
-        rl.clearBackground(rl.Color.ray_white);
+        rl.clearBackground(s.backgroup_color);
         const txt = rl.textFormat("fps = %d tps = %f", .{ rl.getFPS(), 1 / s.loop.delta });
         rl.setWindowTitle(txt);
         const posX: i32 = @intFromFloat(s.balls_boundry.x);
@@ -77,13 +77,29 @@ pub const GameState = struct {
         const width = @as(i32, @intFromFloat(s.balls_boundry.z)) - posX;
         const height = @as(i32, @intFromFloat(s.balls_boundry.w)) - posY;
 
-        if (rg.button(.init(120, 24, 120, 24), "btn")) s.swapBackgroud();
+        const border = 2;
+        if (rg.button(.init(24, 24, 120, 24), "btn")) s.swapBackgroud();
+
+        rl.drawRectangle(
+            posX - border,
+            posY - border,
+            width + border * 2,
+            height + border * 2,
+            rl.Color.gray,
+        );
         rl.drawRectangle(
             posX,
             posY,
             width,
             height,
             rl.Color.white,
+        );
+        rl.drawRectangle(
+            posX,
+            posY,
+            width,
+            height,
+            s.backgroup_color,
         );
 
         for (s.balls.items) |*ball| {

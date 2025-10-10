@@ -33,6 +33,9 @@ pub fn build(b: *std.Build) void {
             },
         }),
     });
+    if (optimize == .ReleaseFast or optimize == .ReleaseSafe or optimize == .ReleaseSmall) {
+        exe.subsystem = .Windows;
+    }
 
     b.installArtifact(exe);
 

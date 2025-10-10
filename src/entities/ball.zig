@@ -84,7 +84,7 @@ pub const BallState = struct {
                 m / @as(f32, @floatFromInt(s.loopstate.tickrate.current));
         return per_s;
     }
-    pub fn update(s: *@This(), allow_interaction: bool) void {
+    fn updateForceVector(s: *@This(), allow_interaction: bool) void {
         const mouse = s.getMouse(rl.getMousePosition());
         const mouse_down = rl.isMouseButtonDown(.left);
         if (mouse_down and allow_interaction) {
@@ -93,35 +93,34 @@ pub const BallState = struct {
                 s.force = mouse.subtract(s.position);
             }
         } else s.is_hold = false;
-        s.applyFriction();
-        const scaler = s.getScaler();
-        const vec = s.force.scale(scaler);
-
-        const target = s.position.add(vec);
-        const crossed = s.boundriesCrossed(target);
+    }
+    fn applyBoundryColisions(s: *@This(), target: *rl.Vector2) void {
+        const crossed = s.boundriesCrossed(target.*);
         if ((crossed.left and s.force.x < 0) or (crossed.right and s.force.x > 0)) s.force.x = -s.force.x;
         if ((crossed.top and s.force.y < 0) or (crossed.bottom and s.force.y > 0)) s.force.y = -s.force.y;
 
-        // if (crossed.left) target.x = 2 * s.boundry.x - target.x;
-        // if (crossed.right) target.x = 2 * s.boundry.z - target.x;
-        // if (crossed.top) target.y = 2 * s.boundry.y - target.y;
-        // if (crossed.bottom) target.y = 2 * s.boundry.w - target.y;
+        if (crossed.left) target.x = s.boundry.x + s.width;
+        if (crossed.right) target.x = s.boundry.z - s.width;
+        if (crossed.top) target.y = s.boundry.y + s.width;
+        if (crossed.bottom) target.y = s.boundry.w - s.width;
+    }
 
-        // if (@as(u4, @bitCast(crossed)) != 0)
-        //     std.debug.print("scaler({})\ncrossed{}\nforce{}\nw={}\npos{}\nt{}\nboundry{}\n\n", .{
-        //         scaler,
-        //         crossed,
-        //         s.force,
-        //         s.width,
-        //         s.position,
-        //         target,
-        //         s.boundry,
-        //     });
-
+    fn applyColision(s: *@This(), other: *@This()) void {
+        s.position.subtract(other.*);
+    }
+    pub fn checkAndApplyColision(s: *@This(), other: *@This()) void {
+        if (s.position.distanceSqr(other.*) < std.math.pow(f32, s.width + other.width, 2)) {
+            s.applyColision(other);
+        }
+    }
+    pub fn update(s: *@This(), allow_interaction: bool) void {
+        s.updateForceVector(allow_interaction);
+        s.applyFriction();
+        const scaler = s.getScaler();
+        const vec = s.force.scale(scaler);
+        var target = s.position.add(vec);
+        s.applyBoundryColisions(&target);
         s.position = target;
-
-        // s.position.x += (s.mouse.x - s.position.x) * s.force;
-        // s.position.y += (s.mouse.y - s.position.y) * s.force;
     }
     pub fn init(loopstate: *loop.LoopState, boundry: *rl.Vector4) @This() {
         return .{ .loopstate = loopstate, .boundry = boundry };
@@ -149,3 +148,5 @@ pub const BallState = struct {
         );
     }
 };
+
+fn rayInstersect(a: rl.Vector2, b: rl.Vector2) void {}
