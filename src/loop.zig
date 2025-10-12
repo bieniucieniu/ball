@@ -3,7 +3,7 @@ const rl = @import("raylib");
 
 pub const RateState = packed struct {
     current: i32 = 0,
-    hight: i32 = 120,
+    hight: i32 = std.math.maxInt(i32),
     low: i32 = 10,
 
     pub fn copy(self: *@This(), other: *const @This()) void {

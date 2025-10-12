@@ -1,9 +1,6 @@
 const rl = @import("raylib");
-const rg = @import("raygui");
 const std = @import("std");
-const BallState = @import("./entities/ball.zig").BallState;
-const LoopState = @import("./loop.zig").LoopState;
-const GameState = @import("./game.zig").GameState;
+const BallsState = @import("./modules/balls/balls.zig").BallsState;
 const meta = std.meta;
 const bufPrint = std.fmt.bufPrint;
 
@@ -19,7 +16,7 @@ pub fn run() !void {
     _ = args.skip();
     const count: usize = getArgsNextInt(&args) catch 2_000;
 
-    var state: GameState = try .init(allocator, 1);
+    var state: BallsState = try .init(allocator, 1);
     defer state.deinit();
 
     try state.appendBalls(count);
@@ -34,7 +31,7 @@ pub fn run() !void {
     try runRenderLoop(&state);
     update_thread.detach();
 }
-fn runRenderLoop(state: *GameState) !void {
+fn runRenderLoop(state: *BallsState) !void {
     while (!rl.windowShouldClose()) {
         rl.beginDrawing();
         defer rl.endDrawing();
@@ -43,7 +40,7 @@ fn runRenderLoop(state: *GameState) !void {
     }
 }
 
-fn runUpdateLoop(state: *GameState) void {
+fn runUpdateLoop(state: *BallsState) void {
     while (!rl.windowShouldClose()) {
         state.update();
         state.sleepToNext();

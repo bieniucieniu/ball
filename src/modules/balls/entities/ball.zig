@@ -1,6 +1,6 @@
 const rl = @import("raylib");
 const std = @import("std");
-const loop = @import("../loop.zig");
+const loop = @import("../../../loop.zig");
 
 pub const BallState = struct {
     loopstate: *loop.LoopState,
@@ -107,6 +107,8 @@ pub const BallState = struct {
         if (crossed.right) target.x = s.boundry.z - s.width;
         if (crossed.top) target.y = s.boundry.y + s.width;
         if (crossed.bottom) target.y = s.boundry.w - s.width;
+
+        //std.debug.print("{}\n{}\n{}\n{}\n\n", .{ crossed, target.*, s.boundry, s.loopstate });
     }
 
     fn applyColision(s: *@This(), other: *@This()) void {
@@ -149,26 +151,35 @@ pub const BallState = struct {
     }
     pub fn draw(s: *@This()) void {
         const force = s.force;
-        const scale = s.getScaler();
+        //const scale = s.getScaler();
         rl.drawLine(
             @intFromFloat(s.position.x),
             @intFromFloat(s.position.y),
-            @intFromFloat(s.position.x + force.x * scale),
-            @intFromFloat(s.position.y + force.y * scale),
+            @intFromFloat(s.position.x + force.x),
+            @intFromFloat(s.position.y + force.y),
             s.border_color,
         );
-        rl.drawCircle(
-            @intFromFloat(s.position.x),
-            @intFromFloat(s.position.y),
-            s.width + s.border_width,
-            s.border_color,
-        );
-        rl.drawCircle(
-            @intFromFloat(s.position.x),
-            @intFromFloat(s.position.y),
+        rl.drawRing(
+            s.position,
             s.width,
-            s.color,
+            s.width + s.border_width,
+            0,
+            360,
+            0,
+            s.border_color,
         );
+        // rl.drawCircle(
+        //     @intFromFloat(s.position.x),
+        //     @intFromFloat(s.position.y),
+        //     s.width + s.border_width,
+        //     s.border_color,
+        // );
+        // rl.drawCircle(
+        //     @intFromFloat(s.position.x),
+        //     @intFromFloat(s.position.y),
+        //     s.width,
+        //     s.color,
+        // );
     }
 };
 

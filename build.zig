@@ -34,7 +34,11 @@ pub fn build(b: *std.Build) void {
         }),
     });
     if (optimize == .ReleaseFast or optimize == .ReleaseSafe or optimize == .ReleaseSmall) {
-        exe.subsystem = .Windows;
+        switch (target.result.os.tag) {
+            .linux, .macos => exe.subsystem = .Posix,
+            .windows => exe.subsystem = .Windows,
+            else => {},
+        }
     }
 
     b.installArtifact(exe);

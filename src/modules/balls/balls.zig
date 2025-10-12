@@ -2,10 +2,10 @@ const rl = @import("raylib");
 const rg = @import("raygui");
 const std = @import("std");
 const BallState = @import("./entities/ball.zig").BallState;
-const LoopState = @import("./loop.zig").LoopState;
+const LoopState = @import("../../loop.zig").LoopState;
 const meta = std.meta;
 
-pub const GameState = struct {
+pub const BallsState = struct {
     arena: std.heap.ArenaAllocator,
     loop: LoopState,
     width: i32 = 800,
@@ -22,6 +22,20 @@ pub const GameState = struct {
         const eqls = meta.eql(self.backgroup_color, .white);
         self.backgroup_color = if (eqls) .black else .white;
     }
+    pub fn createBall(s: *@This(), rand: *const std.Random) BallState {
+        var ball: BallState = .init(
+            &s.loop,
+            &s.balls_boundry,
+        );
+        ball.position = .init(
+            (s.balls_boundry.x + s.balls_boundry.z) / 2,
+            (s.balls_boundry.y + s.balls_boundry.w) / 2,
+        );
+        ball.force = rl.Vector2.one().scale(100).rotate(rand.float(f32) * 360);
+        ball.mass = (rand.float(f32) * 600) + 600;
+        ball.width = ball.mass / 200;
+        return ball;
+    }
 
     pub fn appendBalls(s: *@This(), count: usize) !void {
         const alloc = s.arena.allocator();
@@ -32,18 +46,19 @@ pub const GameState = struct {
         });
         const rand = prng.random();
         for (0..count) |_| {
-            var ball: BallState = .init(
-                &s.loop,
-                &s.balls_boundry,
-            );
-            ball.position = .init(
-                (s.balls_boundry.x + s.balls_boundry.z) / 2,
-                (s.balls_boundry.y + s.balls_boundry.w) / 2,
-            );
-            ball.force = rl.Vector2.one().scale(100).rotate(rand.float(f32) * 360);
-            ball.mass = (rand.float(f32) * 600) + 600;
-            ball.width = ball.mass / 200;
-            try s.balls.append(alloc, ball);
+            try s.balls.append(alloc, s.createBall(&rand));
+        }
+    }
+    pub fn resetBalls(s: *@This()) !void {
+        var prng = std.Random.DefaultPrng.init(blk: {
+            var seed: u64 = undefined;
+            try std.posix.getrandom(std.mem.asBytes(&seed));
+            break :blk seed;
+        });
+        const rand = prng.random();
+
+        for (s.balls.items) |*b| {
+            b.* = s.createBall(&rand);
         }
     }
 
@@ -88,6 +103,7 @@ pub const GameState = struct {
 
         const border = 2;
         if (rg.button(.init(24, 24, 120, 24), "btn")) s.swapBackgroud();
+        if (rg.button(.init(160, 24, 120, 24), "reset")) s.resetBalls() catch {};
 
         rl.drawRectangle(
             posX - border,
