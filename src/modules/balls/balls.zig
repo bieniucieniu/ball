@@ -10,7 +10,7 @@ loop: LoopState,
 width: i32 = 800,
 height: i32 = 450,
 backgroup_color: rl.Color = .white,
-friction: f32 = 0.001,
+friction: f32 = 0.01,
 balls: std.ArrayList(BallState),
 balls_boundry: rl.Vector4 = .init(0, 0, 800, 450),
 
@@ -24,13 +24,13 @@ pub fn swapBackgroud(self: *@This()) void {
 }
 pub fn createBall(s: *@This(), rand: *const std.Random) BallState {
     var ball: BallState = .init();
-    ball.position = .init(
+    ball.state.position = .init(
         (s.balls_boundry.x + s.balls_boundry.z) / 2,
         (s.balls_boundry.y + s.balls_boundry.w) / 2,
     );
-    ball.force = rl.Vector2.one().scale(100).rotate(rand.float(f32) * 360);
-    ball.mass = (rand.float(f32) * 600) + 600;
-    ball.width = ball.mass / 200;
+    ball.state.force = rl.Vector2.one().scale(100).rotate(rand.float(f32) * 360);
+    ball.state.mass = (rand.float(f32) * 600) + 600;
+    ball.state.width = ball.state.mass / 100;
     return ball;
 }
 
@@ -78,17 +78,23 @@ pub fn update(s: *@This()) void {
         .allow_interaction = true,
         .boundry = &s.balls_boundry,
         .loopstate = &s.loop,
+        .friction = s.friction,
     };
-    for (s.balls.items) |*ball| {
+    for (s.balls.items, 0..) |*ball, i| {
         ball.border_color = .gray;
         ball.update(&config);
         if (config.allow_interaction) config.allow_interaction = !ball.is_hold;
-        // inner: for (s.balls.items[(i + 1)..]) |*other|
-        //     if (ball.checkColision(other) != null) {
-        //         ball.border_color = .blue;
-        //         other.border_color = .blue;
-        //         break :inner;
-        //     };
+        //_ = i;
+        for (s.balls.items[(i + 1)..]) |*other| {
+            const f = ball.state.getRepultionForce(&other.state);
+            ball.state.addForce(f, &config);
+            other.state.addForce(f.negate(), &config);
+        }
+        // if (ball.checkColision(other) != null) {
+        //     ball.border_color = .blue;
+        //     other.border_color = .blue;
+        //     break :inner;
+        // };
     }
 }
 pub fn draw(s: *@This()) void {
@@ -106,7 +112,7 @@ pub fn draw(s: *@This()) void {
         s.balls_boundry.w - s.balls_boundry.y,
     );
 
-    rl.drawRectangleLinesEx(boundry, 2, rl.Color.gray);
+    rl.drawRectangleLinesEx(boundry, 2, .gray);
 
     for (s.balls.items) |*ball| {
         ball.draw();
