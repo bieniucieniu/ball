@@ -7,7 +7,7 @@ pub const BallState = struct {
 
     position: rl.Vector2 = .init(0, 0),
     force: rl.Vector2 = .init(0, 0),
-    next_position: ?rl.Vector2 = null,
+    target_position: ?rl.Vector2 = null,
 
     width: f32 = 12,
     friction: f32 = 0.001,
@@ -132,14 +132,14 @@ pub const BallState = struct {
         return checkIntersection(s, other) orelse checkRayColision(s, other);
     }
     pub fn getNextPosition(s: *@This()) *rl.Vector2 {
-        if (s.next_position) |*p| return p;
+        if (s.target_position) |*p| return p;
         const scaler = s.getScaler();
         const vec = s.force.scale(scaler);
-        s.next_position = s.position.add(vec);
-        if (s.next_position) |*p| return p else unreachable;
+        s.target_position = s.position.add(vec);
+        if (s.target_position) |*p| return p else unreachable;
     }
     pub fn update(s: *@This(), allow_interaction: bool) void {
-        defer s.next_position = null;
+        defer s.target_position = null;
         s.updateForceVector(allow_interaction);
         s.applyFriction();
         const target = s.getNextPosition();
@@ -151,12 +151,10 @@ pub const BallState = struct {
     }
     pub fn draw(s: *@This()) void {
         const force = s.force;
-        //const scale = s.getScaler();
-        rl.drawLine(
-            @intFromFloat(s.position.x),
-            @intFromFloat(s.position.y),
-            @intFromFloat(s.position.x + force.x),
-            @intFromFloat(s.position.y + force.y),
+        rl.drawLineEx(
+            s.position,
+            s.position.add(force),
+            1,
             s.border_color,
         );
         rl.drawRing(
@@ -165,21 +163,9 @@ pub const BallState = struct {
             s.width + s.border_width,
             0,
             360,
-            0,
+            12,
             s.border_color,
         );
-        // rl.drawCircle(
-        //     @intFromFloat(s.position.x),
-        //     @intFromFloat(s.position.y),
-        //     s.width + s.border_width,
-        //     s.border_color,
-        // );
-        // rl.drawCircle(
-        //     @intFromFloat(s.position.x),
-        //     @intFromFloat(s.position.y),
-        //     s.width,
-        //     s.color,
-        // );
     }
 };
 
