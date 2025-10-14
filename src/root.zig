@@ -1,6 +1,6 @@
 const rl = @import("raylib");
 const std = @import("std");
-const BallsState = @import("./modules/balls/balls.zig").BallsState;
+const BallsState = @import("./modules/balls/balls.zig");
 const meta = std.meta;
 const bufPrint = std.fmt.bufPrint;
 
