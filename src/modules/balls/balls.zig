@@ -12,6 +12,7 @@ height: i32 = 450,
 backgroup_color: rl.Color = .white,
 friction: f32 = 0.01,
 balls: std.ArrayList(BallState),
+ballsMAL: std.MultiArrayList(BallState),
 balls_boundry: rl.Vector4 = .init(0, 0, 800, 450),
 
 pub inline fn sleepToNext(self: *@This()) void {
@@ -42,8 +43,9 @@ pub fn appendBalls(s: *@This(), count: usize) !void {
         break :blk seed;
     });
     const rand = prng.random();
+    try s.balls.ensureTotalCapacity(alloc, count);
     for (0..count) |_| {
-        try s.balls.append(alloc, s.createBall(&rand));
+        s.balls.appendAssumeCapacity(s.createBall(&rand));
     }
 }
 pub fn resetBalls(s: *@This()) !void {
@@ -64,6 +66,7 @@ pub fn init(allocactor: std.mem.Allocator, balls: usize) !@This() {
         .arena = std.heap.ArenaAllocator.init(allocactor),
         .balls = try std.ArrayList(BallState).initCapacity(allocactor, @max(64, balls)),
         .loop = .init(),
+        .ballsMAL = std.MultiArrayList(BallState){},
     };
 }
 pub fn deinit(s: *@This()) void {
@@ -85,16 +88,16 @@ pub fn update(s: *@This()) void {
         ball.update(&config);
         if (config.allow_interaction) config.allow_interaction = !ball.is_hold;
         //_ = i;
-        for (s.balls.items[(i + 1)..]) |*other| {
-            const f = ball.state.getRepultionForce(&other.state);
-            ball.state.addForce(f, &config);
-            other.state.addForce(f.negate(), &config);
+        inner: for (s.balls.items[(i + 1)..]) |*other| {
+            // const f = ball.state.getRepultionForce(&other.state);
+            // ball.state.addForce(f.negate(), &config);
+            // other.state.addForce(f, &config);
+            if (ball.state.checkColision(&other.state, &config) != null) {
+                ball.border_color = .blue;
+                other.border_color = .blue;
+                break :inner;
+            }
         }
-        // if (ball.checkColision(other) != null) {
-        //     ball.border_color = .blue;
-        //     other.border_color = .blue;
-        //     break :inner;
-        // };
     }
 }
 pub fn draw(s: *@This()) void {

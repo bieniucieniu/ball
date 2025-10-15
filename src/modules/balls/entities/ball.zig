@@ -136,26 +136,28 @@ pub const State = struct {
             null;
     }
 
-    pub fn checkRayColision(s: *@This(), other: *@This()) ?rl.Vector2 {
+    pub fn checkRayColision(s: *@This(), o: *@This(), c: *Config) ?rl.Vector2 {
         const transform_vec = s.force.rotate(DEG_PER).normalize().scale(s.width);
+        const next_s = s.getNextPosition(c).*;
+        const next_o = o.getNextPosition(c).*;
         const colision_point =
             ray.raysIntersection(
                 s.position.add(transform_vec),
-                s.getNextPosition().*.add(transform_vec),
-                other.position.add(transform_vec),
-                other.getNextPosition().*.add(transform_vec),
+                next_s.add(transform_vec),
+                o.position.add(transform_vec),
+                next_o.add(transform_vec),
             ) orelse
             ray.raysIntersection(
                 s.position.add(transform_vec.negate()),
-                s.getNextPosition().*.add(transform_vec.negate()),
-                other.position.add(transform_vec.negate()),
-                other.getNextPosition().*.add(transform_vec.negate()),
+                next_s.add(transform_vec.negate()),
+                o.position.add(transform_vec.negate()),
+                next_o.add(transform_vec.negate()),
             );
         return colision_point;
     }
 
-    pub fn checkColision(s: *@This(), other: *@This()) ?rl.Vector2 {
-        return s.checkIntersection(other) orelse s.checkRayColision(other);
+    pub fn checkColision(s: *@This(), other: *@This(), c: *Config) ?rl.Vector2 {
+        return s.checkIntersection(other) orelse s.checkRayColision(other, c);
     }
 
     pub fn getRepultionForce(s: *@This(), other: *@This()) rl.Vector2 {
@@ -192,19 +194,13 @@ pub fn init() @This() {
 const DEG_PER: f32 = std.math.pi / 2.0;
 pub fn draw(s: *@This()) void {
     const force = s.state.force;
-    const transform_vec = force.rotate(DEG_PER).normalize().scale(s.state.width);
-    const target_vec = s.state.position.add(force);
+    const transform_vec = force.normalize().scale(s.state.width);
+    const target_vec = s.state.position.add(force.scale(0.1));
     rl.drawLineEx(
         s.state.position.add(transform_vec),
         target_vec.add(transform_vec),
         1,
-        s.border_color,
-    );
-    rl.drawLineEx(
-        s.state.position.add(transform_vec.negate()),
-        target_vec.add(transform_vec.negate()),
-        1,
-        s.border_color,
+        s.border_color.alpha(0.1),
     );
     rl.drawRing(
         s.state.position,
