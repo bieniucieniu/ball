@@ -3,18 +3,11 @@ const std = @import("std");
 const Loop = @import("../../../loop.zig");
 const ray = @import("../lib/raycast.zig");
 
-state: State = .{},
+state: State,
 color: rl.Color = .white,
 border_color: rl.Color = .gray,
 border_width: f32 = 2,
 is_hold: bool = false,
-
-pub const Config = struct {
-    allow_interaction: bool,
-    boundry: *rl.Vector4,
-    loopstate: *Loop,
-    friction: f32 = 0.01,
-};
 
 pub const State = struct {
     position: rl.Vector2 = .init(0, 0),
@@ -22,6 +15,10 @@ pub const State = struct {
     target_position: ?rl.Vector2 = null,
     width: f32 = 12,
     mass: f32 = 30,
+    boundry: *rl.Vector4,
+    pub fn init(boundry: *rl.Vector4) @This() {
+        return .{ .boundry = boundry };
+    }
     inline fn getMouseX(mouse: rl.Vector2, boundry: rl.Vector4) f32 {
         return if (mouse.x <= boundry.x)
             boundry.x
@@ -39,18 +36,18 @@ pub const State = struct {
             mouse.y;
     }
 
-    inline fn boundryLeft(s: *@This(), target: rl.Vector2, c: *const Config) bool {
-        return target.x - s.width <= c.boundry.x;
+    inline fn boundryLeft(s: *@This(), target: rl.Vector2) bool {
+        return target.x - s.width <= s.boundry.x;
     }
-    inline fn boundryRight(s: *@This(), target: rl.Vector2, c: *const Config) bool {
-        return target.x + s.width >= c.boundry.z;
+    inline fn boundryRight(s: *@This(), target: rl.Vector2) bool {
+        return target.x + s.width >= s.boundry.z;
     }
 
-    inline fn boundryTop(s: *@This(), target: rl.Vector2, c: *const Config) bool {
-        return target.y - s.width <= c.boundry.y;
+    inline fn boundryTop(s: *@This(), target: rl.Vector2) bool {
+        return target.y - s.width <= s.boundry.y;
     }
-    inline fn boundryBottom(s: *@This(), target: rl.Vector2, c: *const Config) bool {
-        return target.y + s.width >= c.boundry.w;
+    inline fn boundryBottom(s: *@This(), target: rl.Vector2) bool {
+        return target.y + s.width >= s.boundry.w;
     }
 
     const BoundriesCrossed = packed struct(u4) {
@@ -67,18 +64,13 @@ pub const State = struct {
             return self.top or self.bottom;
         }
     };
-    fn boundriesCrossed(s: *@This(), target: rl.Vector2, c: *const Config) BoundriesCrossed {
+    fn boundriesCrossed(s: *@This(), target: rl.Vector2) BoundriesCrossed {
         return .{
-            .left = s.boundryLeft(target, c),
-            .right = s.boundryRight(target, c),
-            .top = s.boundryTop(target, c),
-            .bottom = s.boundryBottom(target, c),
+            .left = s.boundryLeft(target),
+            .right = s.boundryRight(target),
+            .top = s.boundryTop(target),
+            .bottom = s.boundryBottom(target),
         };
-    }
-
-    fn applyFriction(s: *@This(), c: *const Config) void {
-        const base = (1 - c.friction * s.getScaler(c));
-        s.force = s.force.scale(std.math.pow(f32, base, 2));
     }
 
     fn getMouse(mouse: rl.Vector2, boundry: rl.Vector4) rl.Vector2 {
@@ -88,21 +80,14 @@ pub const State = struct {
         );
     }
 
-    pub fn addForce(s: *@This(), f: rl.Vector2, c: *const Config) void {
-        s.force = s.force.add(f.scale(s.getScaler(c)));
-    }
-    inline fn getScaler(s: *@This(), c: *const Config) f32 {
-        const per_s =
-            if (c.loopstate.delta != 0)
-                c.loopstate.delta * (1_000 / s.mass)
-            else
-                (1_000 / s.mass) / @as(f32, @floatFromInt(c.loopstate.tickrate.current));
+    inline fn getScaler(s: *@This(), delta: f32) f32 {
+        const per_s = delta * (1_000 / s.mass);
         return per_s;
     }
-    fn applyMouseAction(s: *@This(), c: *const Config, is_hold: bool) ?bool {
-        const mouse = getMouse(rl.getMousePosition(), c.boundry.*);
+    fn applyMouseAction(s: *@This(), is_hold: bool) ?bool {
+        const mouse = getMouse(rl.getMousePosition(), s.boundry.*);
         const mouse_down = rl.isMouseButtonDown(.left);
-        if (mouse_down and c.allow_interaction) {
+        if (mouse_down) {
             if (mouse.distance(s.position) < s.width or is_hold) {
                 s.force = mouse.subtract(s.position);
                 return true;
@@ -110,15 +95,15 @@ pub const State = struct {
         } else return false;
         return null;
     }
-    fn applyBoundryColisions(s: *@This(), target: *rl.Vector2, c: *const Config) void {
-        const crossed = s.boundriesCrossed(target.*, c);
+    fn applyBoundryColisions(s: *@This(), target: *rl.Vector2) void {
+        const crossed = s.boundriesCrossed(target.*);
         if ((crossed.left and s.force.x < 0) or (crossed.right and s.force.x > 0)) s.force.x = -s.force.x;
         if ((crossed.top and s.force.y < 0) or (crossed.bottom and s.force.y > 0)) s.force.y = -s.force.y;
 
-        if (crossed.left) target.x = c.boundry.x + s.width;
-        if (crossed.right) target.x = c.boundry.z - s.width;
-        if (crossed.top) target.y = c.boundry.y + s.width;
-        if (crossed.bottom) target.y = c.boundry.w - s.width;
+        if (crossed.left) target.x = s.boundry.x + s.width;
+        if (crossed.right) target.x = s.boundry.z - s.width;
+        if (crossed.top) target.y = s.boundry.y + s.width;
+        if (crossed.bottom) target.y = s.boundry.w - s.width;
 
         //std.debug.print("{}\n{}\n{}\n{}\n\n", .{ crossed, target.*, s.boundry, s.loopstate });
     }
@@ -136,10 +121,10 @@ pub const State = struct {
             null;
     }
 
-    pub fn checkRayColision(s: *@This(), o: *@This(), c: *Config) ?rl.Vector2 {
+    pub fn checkRayColision(s: *@This(), o: *@This(), delta: f32) ?rl.Vector2 {
         const transform_vec = s.force.rotate(DEG_PER).normalize().scale(s.width);
-        const next_s = s.getNextPosition(c).*;
-        const next_o = o.getNextPosition(c).*;
+        const next_s = s.getNextPosition(delta).*;
+        const next_o = o.getNextPosition(delta).*;
         const colision_point =
             ray.raysIntersection(
                 s.position.add(transform_vec),
@@ -156,8 +141,8 @@ pub const State = struct {
         return colision_point;
     }
 
-    pub fn checkColision(s: *@This(), other: *@This(), c: *Config) ?rl.Vector2 {
-        return s.checkIntersection(other) orelse s.checkRayColision(other, c);
+    pub fn checkColision(s: *@This(), other: *@This(), delta: f32) ?rl.Vector2 {
+        return s.checkIntersection(other) orelse s.checkRayColision(other, delta);
     }
 
     pub fn getRepultionForce(s: *@This(), other: *@This()) rl.Vector2 {
@@ -169,27 +154,26 @@ pub const State = struct {
 
         return vec.scale(f);
     }
-    pub fn getNextPosition(s: *@This(), c: *const Config) *rl.Vector2 {
+    pub fn getNextPosition(s: *@This(), delta: f32) *rl.Vector2 {
         if (s.target_position) |*p| return p;
-        const scaler = s.getScaler(c);
+        const scaler = s.getScaler(delta);
         const vec = s.force.scale(scaler);
         s.target_position = s.position.add(vec);
         if (s.target_position) |*p| return p else unreachable;
     }
 };
-pub fn update(s: *@This(), c: *const Config) void {
+pub fn update(s: *@This(), delta: f32) void {
     defer s.state.target_position = null;
-    if (s.state.applyMouseAction(c, s.is_hold)) |is_hold| {
+    if (s.state.applyMouseAction(s.is_hold)) |is_hold| {
         s.is_hold = is_hold;
     }
-    s.state.applyFriction(c);
-    const target = s.state.getNextPosition(c);
-    s.state.applyBoundryColisions(target, c);
+    const target = s.state.getNextPosition(delta);
+    s.state.applyBoundryColisions(target);
     s.state.position = target.*;
 }
 
-pub fn init() @This() {
-    return .{};
+pub fn init(boundry: *rl.Vector4) @This() {
+    return .{ .state = .init(boundry) };
 }
 const DEG_PER: f32 = std.math.pi / 2.0;
 pub fn draw(s: *@This()) void {

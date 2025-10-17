@@ -1,5 +1,6 @@
 const rl = @import("raylib");
 const std = @import("std");
+const LoopState = @import("./loop.zig");
 const BallsState = @import("./modules/balls/balls.zig");
 const meta = std.meta;
 const bufPrint = std.fmt.bufPrint;
@@ -16,6 +17,7 @@ pub fn run() !void {
     _ = args.skip();
     const count: usize = getArgsNextInt(&args) catch 2_000;
 
+    var loopState: LoopState = .init();
     var state: BallsState = try .init(allocator, 1);
     defer state.deinit();
 
@@ -25,24 +27,24 @@ pub fn run() !void {
     rl.initWindow(state.width, state.width, "yea");
     defer rl.closeWindow(); // Close window and OpenGL context
 
-    rl.setTargetFPS(state.loop.framerate.current);
-    state.update();
-    var update_thread = try std.Thread.spawn(.{}, runUpdateLoop, .{&state});
-    try runRenderLoop(&state);
-    update_thread.detach();
+    rl.setTargetFPS(loopState.framerate.current);
+    state.update(loopState.delta);
+    var update_thread = try std.Thread.spawn(.{}, runUpdateLoop, .{ &loopState, &state });
+    defer update_thread.detach();
+    try runRenderLoop(&loopState, &state);
 }
-fn runRenderLoop(state: *BallsState) !void {
+fn runRenderLoop(loop: *LoopState, state: *BallsState) !void {
     while (!rl.windowShouldClose()) {
         rl.beginDrawing();
         defer rl.endDrawing();
-
-        state.draw();
+        state.draw(loop);
     }
 }
 
-fn runUpdateLoop(state: *BallsState) void {
+fn runUpdateLoop(loop: *LoopState, state: *BallsState) void {
     while (!rl.windowShouldClose()) {
-        state.update();
-        state.sleepToNext();
+        loop.update();
+        state.update(loop.delta);
+        loop.sleepToNext();
     }
 }

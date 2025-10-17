@@ -6,7 +6,6 @@ const LoopState = @import("../../loop.zig");
 const meta = std.meta;
 
 arena: std.heap.ArenaAllocator,
-loop: LoopState,
 width: i32 = 800,
 height: i32 = 450,
 backgroup_color: rl.Color = .white,
@@ -15,16 +14,12 @@ balls: std.ArrayList(BallState),
 ballsMAL: std.MultiArrayList(BallState),
 balls_boundry: rl.Vector4 = .init(0, 0, 800, 450),
 
-pub inline fn sleepToNext(self: *@This()) void {
-    self.loop.sleepToNext();
-}
-
 pub fn swapBackgroud(self: *@This()) void {
     const eqls = meta.eql(self.backgroup_color, .white);
     self.backgroup_color = if (eqls) .black else .white;
 }
 pub fn createBall(s: *@This(), rand: *const std.Random) BallState {
-    var ball: BallState = .init();
+    var ball: BallState = .init(&s.balls_boundry);
     ball.state.position = .init(
         (s.balls_boundry.x + s.balls_boundry.z) / 2,
         (s.balls_boundry.y + s.balls_boundry.w) / 2,
@@ -65,34 +60,23 @@ pub fn init(allocactor: std.mem.Allocator, balls: usize) !@This() {
     return .{
         .arena = std.heap.ArenaAllocator.init(allocactor),
         .balls = try std.ArrayList(BallState).initCapacity(allocactor, @max(64, balls)),
-        .loop = .init(),
         .ballsMAL = std.MultiArrayList(BallState){},
     };
 }
 pub fn deinit(s: *@This()) void {
     s.arena.deinit();
 }
-pub fn update(s: *@This()) void {
-    s.loop.update();
+pub fn update(s: *@This(), delta: f32) void {
     s.width = rl.getScreenWidth();
     s.height = rl.getScreenHeight();
     s.balls_boundry = .init(20, 64, @floatFromInt(s.width - 20), @floatFromInt(s.height - 20));
-    var config: BallState.Config = .{
-        .allow_interaction = true,
-        .boundry = &s.balls_boundry,
-        .loopstate = &s.loop,
-        .friction = s.friction,
-    };
     for (s.balls.items, 0..) |*ball, i| {
         ball.border_color = .gray;
-        ball.update(&config);
-        if (config.allow_interaction) config.allow_interaction = !ball.is_hold;
+        ball.update(delta);
+        //if (config.allow_interaction) config.allow_interaction = !ball.is_hold;
         //_ = i;
         inner: for (s.balls.items[(i + 1)..]) |*other| {
-            // const f = ball.state.getRepultionForce(&other.state);
-            // ball.state.addForce(f.negate(), &config);
-            // other.state.addForce(f, &config);
-            if (ball.state.checkColision(&other.state, &config) != null) {
+            if (ball.state.checkColision(&other.state, delta) != null) {
                 ball.border_color = .blue;
                 other.border_color = .blue;
                 break :inner;
@@ -100,9 +84,9 @@ pub fn update(s: *@This()) void {
         }
     }
 }
-pub fn draw(s: *@This()) void {
+pub fn draw(s: *@This(), loop: *LoopState) void {
     rl.clearBackground(s.backgroup_color);
-    const txt = rl.textFormat("fps = %d tps = %f", .{ rl.getFPS(), 1 / s.loop.delta });
+    const txt = rl.textFormat("fps = %d tps = %f", .{ rl.getFPS(), 1 / loop.delta });
     rl.setWindowTitle(txt);
 
     if (rg.button(.init(24, 24, 120, 24), "btn")) s.swapBackgroud();
