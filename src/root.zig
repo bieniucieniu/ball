@@ -1,7 +1,7 @@
 const rl = @import("raylib");
 const std = @import("std");
-const LoopState = @import("./loop.zig");
-const BallsState = @import("./modules/balls/balls.zig");
+const LoopState = @import("./modules/shared/loop/loop.zig");
+const BallsState = @import("./modules/free-moving-balls/main.zig");
 const meta = std.meta;
 const bufPrint = std.fmt.bufPrint;
 

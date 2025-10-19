@@ -6,7 +6,7 @@ pub const RateState = packed struct {
     hight: i32 = std.math.maxInt(i32),
     low: i32 = 10,
 
-    pub fn copy(self: *@This(), other: *const @This()) void {
+    pub inline fn copy(self: *@This(), other: @This()) void {
         self.current = other.current;
         self.hight = other.hight;
         self.low = other.low;
@@ -21,6 +21,7 @@ tickrate: RateState = .{},
 
 timer: std.time.Timer,
 last_time: u64,
+
 /// delta time secends
 delta: f32 = 0,
 focused: bool = true,
@@ -33,8 +34,15 @@ pub fn update(self: *@This()) void {
     if (self.focused != current_focused) {
         self.focused = current_focused;
     }
-    self.updateTickreate(self.tickrate);
-    self.updateFramerate(self.framerate);
+    //self.updateTickreate(self.tickrate);
+    self.tickrate.current = if (self.focused) self.tickrate.hight else self.tickrate.low;
+
+    //self.updateFramerate(self.framerate);
+    const pre = self.framerate.current;
+    self.framerate.current = if (self.focused) self.framerate.hight else self.framerate.low;
+    if (pre != self.framerate.current) {
+        rl.setTargetFPS(self.framerate.current);
+    }
 }
 
 pub fn updateTickreate(self: *@This(), new: RateState) void {
@@ -66,4 +74,8 @@ pub fn sleepToNext(self: *@This()) void {
 pub fn init() @This() {
     var timer = std.time.Timer.start() catch unreachable;
     return .{ .timer = timer, .last_time = timer.read() };
+}
+
+pub fn reset(s: @This()) void {
+    s.last_time = s.timer.read();
 }

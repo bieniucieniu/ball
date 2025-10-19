@@ -1,7 +1,8 @@
 const rl = @import("raylib");
 const std = @import("std");
-const Loop = @import("../../../loop.zig");
-const ray = @import("../lib/raycast.zig");
+const Shared = @import("../../shared.zig");
+const Loop = Shared.Loop;
+const ray = Shared.Raycast;
 
 state: State,
 color: rl.Color = .white,
