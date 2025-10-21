@@ -1,5 +1,4 @@
 const rl = @import("raylib");
-const rg = @import("raygui");
 const std = @import("std");
 const Shared = @import("../shared.zig");
 pub const Ball = @import("./entities/ball.zig");
@@ -9,22 +8,21 @@ const meta = std.meta;
 arena: std.heap.ArenaAllocator,
 width: i32 = 800,
 height: i32 = 450,
-backgroup_color: rl.Color = .white,
 friction: f32 = 0.01,
 balls: std.ArrayList(Ball),
 ballsMAL: std.MultiArrayList(Ball),
 balls_boundry: rl.Vector4 = .init(0, 0, 800, 450),
 
-pub fn swapBackgroud(self: *@This()) void {
-    const eqls = meta.eql(self.backgroup_color, .white);
-    self.backgroup_color = if (eqls) .black else .white;
-}
 pub fn createBall(s: *@This(), rand: *const std.Random) Ball {
     var ball: Ball = .init(&s.balls_boundry);
     ball.state.position = .init(
         (s.balls_boundry.x + s.balls_boundry.z) / 2,
         (s.balls_boundry.y + s.balls_boundry.w) / 2,
     );
+    std.debug.print("{}\n{}\n\n", .{
+        s.balls_boundry,
+        ball.state,
+    });
     ball.state.force = rl.Vector2.one().scale(100).rotate(rand.float(f32) * 360);
     ball.state.mass = (rand.float(f32) * 600) + 600;
     ball.state.width = ball.state.mass / 100;
@@ -44,7 +42,7 @@ pub fn appendBalls(s: *@This(), count: usize) !void {
         s.balls.appendAssumeCapacity(s.createBall(&rand));
     }
 }
-pub fn resetBalls(s: *@This()) !void {
+pub fn reset(s: *@This()) !void {
     var prng = std.Random.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
         try std.posix.getrandom(std.mem.asBytes(&seed));
@@ -64,13 +62,19 @@ pub fn init(allocactor: std.mem.Allocator, balls: usize) !@This() {
         .ballsMAL = std.MultiArrayList(Ball){},
     };
 }
+pub fn setupState(s: *@This()) !void {
+    return s.update(0);
+}
 pub fn deinit(s: *@This()) void {
     s.arena.deinit();
 }
+pub fn updateBoundry(s: *@This(), width: i32, height: i32) void {
+    s.balls_boundry = .init(20, 64, @floatFromInt(width - 20), @floatFromInt(height - 20));
+}
 pub fn update(s: *@This(), delta: f32) void {
-    s.width = rl.getScreenWidth();
-    s.height = rl.getScreenHeight();
-    s.balls_boundry = .init(20, 64, @floatFromInt(s.width - 20), @floatFromInt(s.height - 20));
+    // s.width = rl.getScreenWidth();
+    // s.height = rl.getScreenHeight();
+    // s.balls_boundry = .init(20, 64, @floatFromInt(s.width - 20), @floatFromInt(s.height - 20));
     for (s.balls.items, 0..) |*ball, i| {
         ball.border_color = .gray;
         ball.update(delta);
@@ -85,14 +89,7 @@ pub fn update(s: *@This(), delta: f32) void {
         }
     }
 }
-pub fn draw(s: *@This(), loop: *Loop) void {
-    rl.clearBackground(s.backgroup_color);
-    const txt = rl.textFormat("fps = %d tps = %f", .{ rl.getFPS(), 1 / loop.delta });
-    rl.setWindowTitle(txt);
-
-    if (rg.button(.init(24, 24, 120, 24), "btn")) s.swapBackgroud();
-    if (rg.button(.init(160, 24, 120, 24), "reset")) s.resetBalls() catch {};
-
+pub fn draw(s: *@This()) void {
     const boundry: rl.Rectangle = .init(
         s.balls_boundry.x,
         s.balls_boundry.y,
