@@ -19,10 +19,7 @@ pub fn createBall(s: *@This(), rand: *const std.Random) Ball {
         (s.balls_boundry.x + s.balls_boundry.z) / 2,
         (s.balls_boundry.y + s.balls_boundry.w) / 2,
     );
-    std.debug.print("{}\n{}\n\n", .{
-        s.balls_boundry,
-        ball.state,
-    });
+
     ball.state.force = rl.Vector2.one().scale(100).rotate(rand.float(f32) * 360);
     ball.state.mass = (rand.float(f32) * 600) + 600;
     ball.state.width = ball.state.mass / 100;
@@ -72,14 +69,9 @@ pub fn updateBoundry(s: *@This(), width: i32, height: i32) void {
     s.balls_boundry = .init(20, 64, @floatFromInt(width - 20), @floatFromInt(height - 20));
 }
 pub fn update(s: *@This(), delta: f32) void {
-    // s.width = rl.getScreenWidth();
-    // s.height = rl.getScreenHeight();
-    // s.balls_boundry = .init(20, 64, @floatFromInt(s.width - 20), @floatFromInt(s.height - 20));
     for (s.balls.items, 0..) |*ball, i| {
         ball.border_color = .gray;
         ball.update(delta);
-        //if (config.allow_interaction) config.allow_interaction = !ball.is_hold;
-        //_ = i;
         inner: for (s.balls.items[(i + 1)..]) |*other| {
             if (ball.state.checkColision(&other.state, delta) != null) {
                 ball.border_color = .blue;

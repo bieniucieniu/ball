@@ -143,7 +143,8 @@ pub const State = struct {
     }
 
     pub fn checkColision(s: *@This(), other: *@This(), delta: f32) ?rl.Vector2 {
-        return s.checkIntersection(other) orelse s.checkRayColision(other, delta);
+        _ = delta;
+        return s.checkIntersection(other); // orelse s.checkRayColision(other, delta);
     }
 
     pub fn getRepultionForce(s: *@This(), other: *@This()) rl.Vector2 {
