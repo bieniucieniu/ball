@@ -1,6 +1,7 @@
 const rl = @import("raylib");
 const std = @import("std");
 const Shared = @import("../../shared.zig");
+const Quad = @import("../../shared/sap/quad.zig");
 const Loop = Shared.Loop;
 const ray = Shared.Raycast;
 
@@ -197,4 +198,18 @@ pub fn draw(s: *@This()) void {
         12,
         s.border_color,
     );
+}
+
+pub inline fn quad(s: *@This(), o: Quad.Axis) Quad {
+    const w = s.state.width;
+    switch (o) {
+        .x, .horizontal => {
+            const x = s.state.position.x;
+            return .{ .min = x - w, .max = x + w };
+        },
+        .y, .vertical => {
+            const y = s.state.position.y;
+            return .{ .min = y - w, .max = y + w };
+        },
+    }
 }
