@@ -114,13 +114,13 @@ pub const State = struct {
         s.position.subtract(other.*);
     }
     pub fn checkIntersection(s: *@This(), other: *@This()) ?rl.Vector2 {
-        return if (s.position.distanceSqr(other.position) <= std.math.pow(f32, s.width + other.width, 2))
-            rl.Vector2.init(
-                (s.position.x + other.position.x) / 2,
-                (s.position.y + other.position.y) / 2,
-            )
-        else
-            null;
+        if (s.position.distanceSqr(other.position) <= std.math.pow(f32, s.width + other.width, 2)) {
+            const prop = (s.width / other.width) * 2;
+            return rl.Vector2.init(
+                (s.position.x + other.position.x) / prop,
+                (s.position.y + other.position.y) / prop,
+            );
+        } else return null;
     }
 
     pub fn checkRayColision(s: *@This(), o: *@This(), delta: f32) ?rl.Vector2 {
