@@ -8,11 +8,8 @@ const App = @import("./modules/app/app.zig");
 const meta = std.meta;
 const bufPrint = std.fmt.bufPrint;
 
-pub fn run() !void {
-    var gpa: std.heap.GeneralPurposeAllocator(.{}) = .init;
-    const allocator = gpa.allocator();
-
-    var loop: Loop = .init();
+pub fn run(allocator: std.mem.Allocator) !void {
+    var loop: Loop = .init(240);
     var state: App = try .init(allocator);
     defer state.deinit();
 

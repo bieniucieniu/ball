@@ -2,5 +2,7 @@ const std = @import("std");
 const ball = @import("ball");
 
 pub fn main() !void {
-    return ball.run();
+    var gpa: std.heap.GeneralPurposeAllocator(.{}) = .init;
+    const allocator = gpa.allocator();
+    return ball.run(allocator);
 }
