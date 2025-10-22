@@ -71,9 +71,14 @@ pub fn sleepToNext(self: *@This()) void {
         std.Thread.sleep(@as(u64, @intFromFloat(d)));
     }
 }
-pub fn init() @This() {
+pub fn init(max_rate: i32) @This() {
     var timer = std.time.Timer.start() catch unreachable;
-    return .{ .timer = timer, .last_time = timer.read() };
+    return .{
+        .framerate = .{ .hight = max_rate },
+        .tickrate = .{ .hight = max_rate },
+        .timer = timer,
+        .last_time = timer.read(),
+    };
 }
 
 pub fn reset(s: @This()) void {

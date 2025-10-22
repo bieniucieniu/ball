@@ -19,7 +19,6 @@ pub fn createBall(s: *@This(), rand: *const std.Random) Ball {
         (s.balls_boundry.x + s.balls_boundry.z) / 2,
         (s.balls_boundry.y + s.balls_boundry.w) / 2,
     );
-
     ball.state.force = rl.Vector2.one().scale(100).rotate(rand.float(f32) * 360);
     ball.state.mass = (rand.float(f32) * 600) + 600;
     ball.state.width = ball.state.mass / 100;
@@ -34,9 +33,8 @@ pub fn appendBalls(s: *@This(), count: usize) !void {
         break :blk seed;
     });
     const rand = prng.random();
-    try s.balls.ensureTotalCapacity(alloc, count);
-    for (0..count) |_| {
-        s.balls.appendAssumeCapacity(s.createBall(&rand));
+    for (try s.balls.addManyAsSlice(alloc, count)) |*b| {
+        b.* = s.createBall(&rand);
     }
 }
 pub fn reset(s: *@This()) !void {
@@ -90,7 +88,6 @@ pub fn draw(s: *@This()) void {
     );
 
     rl.drawRectangleLinesEx(boundry, 2, .gray);
-
     for (s.balls.items) |*ball| {
         ball.draw();
     }

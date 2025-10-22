@@ -34,23 +34,26 @@ pub fn init(allocator: std.mem.Allocator) !@This() {
     };
 }
 pub fn setState(s: *@This(), t: StateArgs) !void {
-    s.state = state: switch (t) {
+    s.deinitState();
+    switch (t) {
         .ball => {
             var count = t.ball.count;
             if (count == 0) count = s.args.count;
-            var ball: BallsState = try .init(s.allocator, count);
-            ball.updateBoundry(s.width, s.height);
-            try ball.appendBalls(count);
-            break :state .{ .ball = ball };
+            s.state = .{ .ball = try .init(s.allocator, count) };
+            s.state.ball.updateBoundry(s.width, s.height);
+            try s.state.ball.appendBalls(count);
         },
-        .none => break :state undefined,
-    };
+        .none => s.state = .{ .none = undefined },
+    }
 }
-pub fn deinit(s: *@This()) void {
+pub fn deinitState(s: *@This()) void {
     switch (s.state) {
         .ball => s.state.ball.deinit(),
         .none => {},
     }
+}
+pub fn deinit(s: *@This()) void {
+    s.deinitState();
     s.args.deinit();
 }
 pub fn update(s: *@This(), delta: f32) void {

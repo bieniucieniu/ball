@@ -16,32 +16,31 @@ pub fn run() !void {
     var state: App = try .init(allocator);
     defer state.deinit();
 
-    //try state.appendBalls(count);
-
     rl.setConfigFlags(.{ .window_resizable = true });
     rl.initWindow(state.width, state.width, "yea");
-    defer rl.closeWindow(); // Close window and OpenGL context
+    defer rl.closeWindow();
 
     rl.setTargetFPS(loop.framerate.current);
     state.update(loop.delta);
     var update_thread = try std.Thread.spawn(.{}, runUpdateLoop, .{ &loop, &state });
-    defer update_thread.detach();
+    // defer update_thread.detach();
     try runRenderLoop(&loop, &state);
+    update_thread.join();
 }
 
-fn runRenderLoop(loop: *Loop, state: *App) !void {
+fn runRenderLoop(loop: *Loop, app: *App) !void {
     while (!rl.windowShouldClose()) {
         rl.beginDrawing();
         defer rl.endDrawing();
         rl.setWindowTitle(rl.textFormat("fps = %d tps = %f", .{ rl.getFPS(), 1 / loop.delta }));
-        state.draw();
+        app.draw();
     }
 }
 
-fn runUpdateLoop(loop: *Loop, state: *App) void {
+fn runUpdateLoop(loop: *Loop, app: *App) void {
     while (!rl.windowShouldClose()) {
         loop.update();
         defer loop.sleepToNext();
-        state.update(loop.delta);
+        app.update(loop.delta);
     }
 }
