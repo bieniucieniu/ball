@@ -115,10 +115,9 @@ pub const State = struct {
     }
     pub fn checkIntersection(s: *@This(), other: *@This()) ?rl.Vector2 {
         if (s.position.distanceSqr(other.position) <= std.math.pow(f32, s.width + other.width, 2)) {
-            const prop = (s.width / other.width) * 2;
             return rl.Vector2.init(
-                (s.position.x + other.position.x) / prop,
-                (s.position.y + other.position.y) / prop,
+                (s.position.x + other.position.x) / 2,
+                (s.position.y + other.position.y) / 2,
             );
         } else return null;
     }

@@ -75,10 +75,9 @@ pub fn update(s: *@This(), delta: f32) void {
         const w = b.state.width;
         q.* = .init(x - w, x + w, b);
     }
-
     for (s.balls_sap.getPairs() catch return) |pair| {
         const a, const b = pair;
-        if (a.state.checkColision(&b.state, delta) != null) {
+        if (a.state.checkColision(&b.state, delta)) |_| {
             a.border_color = .blue;
             b.border_color = .blue;
         }
@@ -87,7 +86,8 @@ pub fn update(s: *@This(), delta: f32) void {
     //     ball.border_color = .gray;
     //     ball.update(delta);
     //     inner: for (s.balls.items[(i + 1)..]) |*other| {
-    //         if (ball.state.checkColision(&other.state, delta) != null) {
+    //         if (ball.state.checkColision(&other.state, delta)) |p| {
+    //             _ = p;
     //             ball.border_color = .blue;
     //             other.border_color = .blue;
     //             break :inner;

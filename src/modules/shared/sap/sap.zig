@@ -38,7 +38,7 @@ pub fn TagedSap(T: type) type {
             }
             return s.quads;
         }
-        pub fn reset(s: *@This(), capacity: usize) !void {
+        pub fn resetLists(s: *@This(), capacity: usize) !void {
             s.active_list.clearRetainingCapacity();
             try s.active_list.ensureTotalCapacity(s.alloc, capacity);
             s.all_pairs.clearRetainingCapacity();
@@ -47,11 +47,19 @@ pub fn TagedSap(T: type) type {
 
         pub fn runWith(s: *@This(), quads: []const Q) ![]const Q {
             try s.copyQuads(quads);
-            std.mem.sort(Q, s.quads, {}, Q.minAsc);
+            s.sortQuads();
             return s.run();
         }
+        pub fn sortQuads(s: *@This()) void {
+            std.mem.sort(Q, s.quads, {}, Q.minAsc);
+        }
+
         pub fn getPairs(s: *@This()) ![][2]T {
-            try s.reset(s.quads.len);
+            s.sortQuads();
+            return s.getPairsAssumeSorted();
+        }
+        pub fn getPairsAssumeSorted(s: *@This()) ![][2]T {
+            try s.resetLists(s.quads.len);
 
             for (s.quads) |q| {
                 var j: usize = 0;
@@ -69,6 +77,7 @@ pub fn TagedSap(T: type) type {
                 //std.debug.print("added to activeList:\n\t{}\n", .{q});
                 try s.active_list.append(s.alloc, q);
             }
+
             return s.all_pairs.items;
         }
     };

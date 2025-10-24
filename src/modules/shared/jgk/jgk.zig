@@ -131,8 +131,8 @@ pub fn gjk(vertices1: []const rl.Vector2, vertices2: []const rl.Vector2) bool {
 
         b = simplex[1];
         c = simplex[0];
-        ab = b.subtract(a); // from point A to B
-        ac = c.subtract(a); // from point A to C
+        ab = a.subtract(b); // from point A to B
+        ac = a.subtract(c); // from point A to C
 
         var acperp = tripleProduct(ab, ac, ac);
 
