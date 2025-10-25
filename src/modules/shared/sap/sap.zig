@@ -45,9 +45,18 @@ pub fn TagedSap(T: type) type {
             try s.all_pairs.ensureTotalCapacity(s.alloc, capacity);
         }
 
+        pub fn sortQuads(s: *@This()) void {
+            std.mem.sort(Q, s.quads, {}, Q.minAsc);
+            // for (s.quads) |*q| {
+            //     std.debug.print("{d}, ", .{q.min});
+            // }
+            // if (true) unreachable;
+        }
+
         pub fn runWith(s: *@This(), quads: []const Q) ![]const Q {
             try s.copyQuads(quads);
             std.mem.sort(Q, s.quads, {}, Q.minAsc);
+
             return s.run();
         }
         pub fn getPairs(s: *@This()) ![][2]T {
