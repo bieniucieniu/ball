@@ -3,7 +3,7 @@ const rl = @import("raylib");
 const rg = @import("raygui");
 const meta = std.meta;
 const LoopState = @import("../shared/loop/loop.zig");
-const BallsState = @import("../free-moving-balls/main.zig");
+const BallsState = @import("../free-moving-balls/free-moving-balls.zig");
 
 const StateEnum = enum { ball, none };
 const StateArgs = union(StateEnum) {

@@ -14,7 +14,6 @@ is_hold: bool = false,
 pub const State = struct {
     position: rl.Vector2 = .init(0, 0),
     force: rl.Vector2 = .init(0, 0),
-    target_position: ?rl.Vector2 = null,
     width: f32 = 12,
     mass: f32 = 30,
     boundry: *rl.Vector4,
@@ -102,10 +101,36 @@ pub const State = struct {
         if ((crossed.left and s.force.x < 0) or (crossed.right and s.force.x > 0)) s.force.x = -s.force.x;
         if ((crossed.top and s.force.y < 0) or (crossed.bottom and s.force.y > 0)) s.force.y = -s.force.y;
 
-        if (crossed.left) target.x = s.boundry.x + s.width;
-        if (crossed.right) target.x = s.boundry.z - s.width;
-        if (crossed.top) target.y = s.boundry.y + s.width;
-        if (crossed.bottom) target.y = s.boundry.w - s.width;
+        if (crossed.left) {
+            target.x = s.boundry.x + s.width;
+        } else if (crossed.right) {
+            target.x = s.boundry.z - s.width;
+        }
+        if (crossed.top) {
+            target.y = s.boundry.y + s.width;
+        } else if (crossed.bottom) {
+            target.y = s.boundry.w - s.width;
+        }
+        // return .{
+        //     .{
+        //         .x = if ((crossed.left and s.force.x < 0) or (crossed.right and s.force.x > 0)) -s.force.x else s.force.x,
+        //         .y = if ((crossed.top and s.force.y < 0) or (crossed.bottom and s.force.y > 0)) -s.force.y else s.force.x,
+        //     },
+        //     .{
+        //         .x = if (crossed.left)
+        //             s.boundry.x + s.width
+        //         else if (crossed.right)
+        //             s.boundry.z - s.width
+        //         else
+        //             target.x,
+        //         .y = if (crossed.top)
+        //             s.boundry.y + s.width
+        //         else if (crossed.bottom)
+        //             s.boundry.w - s.width
+        //         else
+        //             target.y,
+        //     },
+        // };
 
         //std.debug.print("{}\n{}\n{}\n{}\n\n", .{ crossed, target.*, s.boundry, s.loopstate });
     }
@@ -114,7 +139,9 @@ pub const State = struct {
         s.position.subtract(other.*);
     }
     pub fn checkIntersection(s: *@This(), other: *@This()) ?rl.Vector2 {
-        if (s.position.distanceSqr(other.position) <= std.math.pow(f32, s.width + other.width, 2)) {
+        const d = s.width + other.width;
+        if (s.position.distanceSqr(other.position) <= d * d) {
+            //const prop = (s.width / other.width) * 2;
             return rl.Vector2.init(
                 (s.position.x + other.position.x) / 2,
                 (s.position.y + other.position.y) / 2,
@@ -123,7 +150,7 @@ pub const State = struct {
     }
 
     pub fn checkRayColision(s: *@This(), o: *@This(), delta: f32) ?rl.Vector2 {
-        const transform_vec = s.force.rotate(DEG_PER).normalize().scale(s.width);
+        const transform_vec = s.force.rotate(std.math.pi / 2.0).normalize().scale(s.width);
         const next_s = s.getNextPosition(delta).*;
         const next_o = o.getNextPosition(delta).*;
         const colision_point =
@@ -156,38 +183,34 @@ pub const State = struct {
 
         return vec.scale(f);
     }
-    pub fn getNextPosition(s: *@This(), delta: f32) *rl.Vector2 {
-        if (s.target_position) |*p| return p;
+    pub fn getNextPosition(s: *@This(), delta: f32) rl.Vector2 {
         const scaler = s.getScaler(delta);
         const vec = s.force.scale(scaler);
-        s.target_position = s.position.add(vec);
-        if (s.target_position) |*p| return p else unreachable;
+        return s.position.add(vec);
     }
 };
 pub fn update(s: *@This(), delta: f32) void {
-    defer s.state.target_position = null;
     if (s.state.applyMouseAction(s.is_hold)) |is_hold| {
         s.is_hold = is_hold;
     }
-    const target = s.state.getNextPosition(delta);
-    s.state.applyBoundryColisions(target);
-    s.state.position = target.*;
+    var target = s.state.getNextPosition(delta);
+    s.state.applyBoundryColisions(&target);
+    s.state.position = target;
 }
 
 pub fn init(boundry: *rl.Vector4) @This() {
     return .{ .state = .init(boundry) };
 }
-const DEG_PER: f32 = std.math.pi / 2.0;
 pub fn draw(s: *@This()) void {
-    const force = s.state.force;
-    const transform_vec = force.normalize().scale(s.state.width);
-    const target_vec = s.state.position.add(force.scale(0.1));
-    rl.drawLineEx(
-        s.state.position.add(transform_vec),
-        target_vec.add(transform_vec),
-        1,
-        s.border_color.alpha(0.1),
-    );
+    // const force = s.state.force;
+    // const transform_vec = force.normalize().scale(s.state.width);
+    // const target_vec = s.state.position.add(force.scale(0.1));
+    // rl.drawLineEx(
+    //     s.state.position.add(transform_vec),
+    //     target_vec.add(transform_vec),
+    //     1,
+    //     s.border_color.alpha(0.1),
+    // );
     rl.drawRing(
         s.state.position,
         s.state.width,

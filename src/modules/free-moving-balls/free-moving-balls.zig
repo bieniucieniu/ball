@@ -13,13 +13,13 @@ balls: std.ArrayList(Ball),
 ballsMAL: std.MultiArrayList(Ball) = .{},
 balls_boundry: rl.Vector4 = .init(0, 0, 800, 450),
 balls_sap: Shared.Sap.TagedSap(*Ball),
-pub fn createBall(s: *@This(), rand: *const std.Random) Ball {
+pub fn createRandomBall(s: *@This(), rand: *const std.Random) Ball {
     var ball: Ball = .init(&s.balls_boundry);
     ball.state.position = .init(
         (s.balls_boundry.x + s.balls_boundry.z) / 2,
         (s.balls_boundry.y + s.balls_boundry.w) / 2,
     );
-    ball.state.force = rl.Vector2.one().scale(100).rotate(rand.float(f32) * 360);
+    ball.state.force = rl.Vector2.one().scale(64).rotate(rand.float(f32) * 360);
     ball.state.mass = (rand.float(f32) * 600) + 600;
     ball.state.width = ball.state.mass / 100;
     return ball;
@@ -33,7 +33,7 @@ pub fn appendBalls(s: *@This(), count: usize) !void {
     });
     const rand = prng.random();
     for (try s.balls.addManyAsSlice(s.alloc, count)) |*b| {
-        b.* = s.createBall(&rand);
+        b.* = s.createRandomBall(&rand);
     }
 }
 pub fn reset(s: *@This()) !void {
@@ -45,7 +45,7 @@ pub fn reset(s: *@This()) !void {
     const rand = prng.random();
 
     for (s.balls.items) |*b| {
-        b.* = s.createBall(&rand);
+        b.* = s.createRandomBall(&rand);
     }
 }
 
@@ -75,6 +75,8 @@ pub fn update(s: *@This(), delta: f32) void {
         const w = b.state.width;
         q.* = .init(x - w, x + w, b);
     }
+    s.balls_sap.sortQuads();
+
     for (s.balls_sap.getPairs() catch return) |pair| {
         const a, const b = pair;
         if (a.state.checkColision(&b.state, delta)) |_| {
