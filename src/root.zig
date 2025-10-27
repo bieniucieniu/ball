@@ -10,18 +10,18 @@ const bufPrint = std.fmt.bufPrint;
 
 pub fn run(allocator: std.mem.Allocator) !void {
     var loop: Loop = .init(240);
-    var state: App = try .init(allocator);
-    defer state.deinit();
+    var app: App = try .init(allocator);
+    defer app.deinit();
 
     rl.setConfigFlags(.{ .window_resizable = true });
-    rl.initWindow(state.width, state.width, "yea");
+    rl.initWindow(app.width, app.width, "balls be rolling");
     defer rl.closeWindow();
 
     rl.setTargetFPS(loop.framerate.current);
-    state.update(loop.delta);
-    var update_thread = try std.Thread.spawn(.{}, runUpdateLoop, .{ &loop, &state });
+    app.update(loop.delta);
+    var update_thread = try std.Thread.spawn(.{}, runUpdateLoop, .{ &loop, &app });
     // defer update_thread.detach();
-    try runRenderLoop(&loop, &state);
+    try runRenderLoop(&loop, &app);
     update_thread.join();
 }
 
