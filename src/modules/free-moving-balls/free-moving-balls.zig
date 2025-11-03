@@ -23,7 +23,6 @@ pub fn createRandomBall(s: *@This(), rand: *const std.Random) Ball {
     ball.state.width = ball.state.mass / 100;
     return ball;
 }
-
 pub fn appendBalls(s: *@This(), alloc: std.mem.Allocator, count: usize) !void {
     var prng = std.Random.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
@@ -47,7 +46,6 @@ pub fn reset(s: *@This()) !void {
         b.* = s.createRandomBall(&rand);
     }
 }
-
 pub fn init(allocactor: std.mem.Allocator, balls: usize) !@This() {
     return .{
         .balls = try std.ArrayList(Ball).initCapacity(allocactor, @max(64, balls)),
@@ -75,13 +73,12 @@ pub fn update(s: *@This(), alloc: std.mem.Allocator, delta: f32) void {
         const w = b.state.width;
         q.* = .init(x - w, x + w, b);
     }
-    s.balls_sap.sortQuads();
+    s.balls_sap.sortQuadsInplace();
 
     for (s.balls_sap.getPairs(alloc) catch return) |pair| {
         const a, const b = pair;
         if (a.state.checkColision(&b.state, delta)) |_| {
             a.border_color = .blue;
-            b.border_color = .blue;
 
             // const normal = a.state.position.subtract(b.state.position).normalize();
             // const tangent = rl.Vector2.init(-normal.x, normal.y);
@@ -118,7 +115,7 @@ pub fn update(s: *@This(), alloc: std.mem.Allocator, delta: f32) void {
     //     }
     // }
 }
-pub fn draw(s: *@This()) void {
+pub inline fn draw(s: *@This()) void {
     const boundry: rl.Rectangle = .init(
         s.balls_boundry.x,
         s.balls_boundry.y,

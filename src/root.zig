@@ -11,33 +11,34 @@ const bufPrint = std.fmt.bufPrint;
 pub fn run(allocator: std.mem.Allocator) !void {
     var loop: Loop = .init(240);
     var app: App = try .init(allocator);
-    defer app.deinit();
+    defer app.deinit(allocator);
 
     rl.setConfigFlags(.{ .window_resizable = true });
     rl.initWindow(app.width, app.width, "balls be rolling");
     defer rl.closeWindow();
 
     rl.setTargetFPS(loop.framerate.current);
-    app.update(loop.delta);
-    var update_thread = try std.Thread.spawn(.{}, runUpdateLoop, .{ &loop, &app });
+    app.update(allocator, loop.delta);
+    var update_thread = try std.Thread.spawn(.{}, runUpdateLoop, .{ &loop, &app, allocator });
     // defer update_thread.detach();
-    try runRenderLoop(&loop, &app);
+    try runRenderLoop(&loop, &app, allocator);
     update_thread.join();
 }
 
-fn runRenderLoop(loop: *Loop, app: *App) !void {
+fn runRenderLoop(loop: *Loop, app: *App, alloc: std.mem.Allocator) !void {
     while (!rl.windowShouldClose()) {
         rl.beginDrawing();
         defer rl.endDrawing();
         rl.setWindowTitle(rl.textFormat("fps = %d tps = %f", .{ rl.getFPS(), 1 / loop.delta }));
-        app.draw();
+        // alloc should be removed from draw
+        app.draw(alloc);
     }
 }
 
-fn runUpdateLoop(loop: *Loop, app: *App) void {
+fn runUpdateLoop(loop: *Loop, app: *App, alloc: std.mem.Allocator) !void {
     while (!rl.windowShouldClose()) {
         loop.update();
         defer loop.sleepToNext();
-        app.update(loop.delta);
+        app.update(alloc, loop.delta);
     }
 }

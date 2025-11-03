@@ -42,18 +42,18 @@ pub fn TagedSap(T: type) type {
             s.all_pairs.clearRetainingCapacity();
             try s.all_pairs.ensureTotalCapacity(alloc, capacity);
         }
-        pub fn sortQuads(s: *@This()) void {
+        pub fn sortQuadsInplace(s: *@This()) void {
             std.mem.sort(Q, s.quads, {}, Q.minAsc);
         }
 
         pub fn runWith(s: *@This(), quads: []const Q) ![]const Q {
             try s.copyQuads(quads);
-            s.sortQuads();
+            s.sortQuadsInplace();
             return s.run();
         }
 
         pub fn getPairs(s: *@This(), alloc: std.mem.Allocator) ![][2]T {
-            s.sortQuads();
+            s.sortQuadsInplace();
             return s.getPairsAssumeSorted(alloc);
         }
         pub fn getPairsAssumeSorted(s: *@This(), alloc: std.mem.Allocator) ![][2]T {

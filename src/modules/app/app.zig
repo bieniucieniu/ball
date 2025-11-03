@@ -18,8 +18,7 @@ const StateType = union(StateEnum) {
 };
 width: i32 = 800,
 height: i32 = 450,
-args: Cli,
-allocator: std.mem.Allocator,
+options: Cli,
 state: StateType = .{ .none = undefined },
 backgroup_color: rl.Color = .white,
 
@@ -28,58 +27,59 @@ pub fn swapBackgroud(self: *@This()) void {
     self.backgroup_color = if (eqls) .black else .white;
 }
 pub fn init(allocator: std.mem.Allocator) !@This() {
-    const args = try Cli.create(allocator, .{});
-    if (args.help) {
+    const options = try Cli.create(allocator, .{});
+    if (options.help) {
         try Cli.printHelp(.stdout());
         std.process.exit(0);
     }
 
     return .{
-        .args = args,
-        .allocator = allocator,
+        .options = options,
     };
 }
-pub fn setState(s: *@This(), t: StateArgs) !void {
-    s.deinitState();
+pub fn setState(s: *@This(), alloc: std.mem.Allocator, t: StateArgs) !void {
+    s.deinitState(alloc);
     switch (t) {
         .ball => {
             var count = t.ball.count;
-            if (count == 0) count = s.args.count;
-            s.state = .{ .ball = try .init(s.allocator, count) };
+            if (count == 0) count = s.options.count;
+            s.state = .{ .ball = try .init(alloc, count) };
             s.state.ball.updateBoundry(s.width, s.height);
-            try s.state.ball.appendBalls(s.allocator, count);
+            try s.state.ball.appendBalls(alloc, count);
         },
         .none => s.state = .{ .none = undefined },
     }
 }
-pub fn deinitState(s: *@This()) void {
+pub fn deinitState(s: *@This(), alloc: std.mem.Allocator) void {
     switch (s.state) {
-        .ball => s.state.ball.deinit(s.allocator),
+        .ball => s.state.ball.deinit(alloc),
         .none => {},
     }
 }
-pub fn deinit(s: *@This()) void {
-    s.deinitState();
+pub fn deinit(s: *@This(), alloc: std.mem.Allocator) void {
+    s.deinitState(alloc);
 }
-pub fn update(s: *@This(), delta: f32) void {
+pub fn update(s: *@This(), alloc: std.mem.Allocator, delta: f32) void {
     s.width = rl.getScreenWidth();
     s.height = rl.getScreenHeight();
     switch (s.state) {
         .ball => {
             s.state.ball.updateBoundry(s.width, s.height);
-            s.state.ball.update(s.allocator, delta);
+            s.state.ball.update(alloc, delta);
         },
         else => {},
     }
 }
-pub fn draw(s: *@This()) void {
+// alloc should be removed from draw
+pub inline fn draw(s: *@This(), alloc: std.mem.Allocator) void {
     rl.clearBackground(s.backgroup_color);
 
     if (rg.button(.init(24, 24, 120, 24), "btn")) s.swapBackgroud();
     if (rg.button(.init(160, 24, 120, 24), "ball")) {
         switch (s.state) {
             .ball => s.reset() catch {},
-            else => s.setState(.{ .ball = .{} }) catch {},
+            // alloc should be removed from draw
+            else => s.setState(alloc, .{ .ball = .{} }) catch {},
         }
     }
 
