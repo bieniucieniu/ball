@@ -6,43 +6,41 @@ pub fn TagedSap(T: type) type {
     return struct {
         const Q = Quad.TagedQuad(T);
 
-        alloc: std.mem.Allocator,
         quads: []Q,
         all_pairs: std.ArrayList([2]T),
         active_list: std.ArrayList(?Q),
 
         pub fn init(alloc: std.mem.Allocator, init_size: usize) !@This() {
             return .{
-                .alloc = alloc,
                 .active_list = try .initCapacity(alloc, init_size),
                 .all_pairs = try .initCapacity(alloc, init_size),
                 .quads = try alloc.alloc(Q, init_size),
             };
         }
-        pub fn deinit(s: *@This()) void {
-            s.active_list.deinit(s.alloc);
-            s.all_pairs.deinit(s.alloc);
-            s.alloc.free(s.quads);
+        pub fn deinit(s: *@This(), alloc: std.mem.Allocator) void {
+            s.active_list.deinit(alloc);
+            s.all_pairs.deinit(alloc);
+            alloc.free(s.quads);
         }
-        pub fn copyQuads(s: *@This(), quads: []const Q) !void {
+        pub fn copyQuads(s: *@This(), alloc: std.mem.Allocator, quads: []const Q) !void {
             if (quads.len != s.quads.len) {
-                s.alloc.free(s.quads);
-                s.quads = try s.alloc.alloc(Q, quads.len);
+                alloc.free(s.quads);
+                s.quads = try alloc.alloc(Q, quads.len);
             }
             for (quads, 0..) |*q, i| s.quads[i] = q.*;
         }
-        pub fn setQuadsAsSlice(s: *@This(), size: usize) ![]Q {
+        pub fn setQuadsAsSlice(s: *@This(), alloc: std.mem.Allocator, size: usize) ![]Q {
             if (size != s.quads.len) {
-                s.alloc.free(s.quads);
-                s.quads = try s.alloc.alloc(Q, size);
+                alloc.free(s.quads);
+                s.quads = try alloc.alloc(Q, size);
             }
             return s.quads;
         }
-        pub fn resetLists(s: *@This(), capacity: usize) !void {
+        pub fn resetLists(s: *@This(), alloc: std.mem.Allocator, capacity: usize) !void {
             s.active_list.clearRetainingCapacity();
-            try s.active_list.ensureTotalCapacity(s.alloc, capacity);
+            try s.active_list.ensureTotalCapacity(alloc, capacity);
             s.all_pairs.clearRetainingCapacity();
-            try s.all_pairs.ensureTotalCapacity(s.alloc, capacity);
+            try s.all_pairs.ensureTotalCapacity(alloc, capacity);
         }
         pub fn sortQuads(s: *@This()) void {
             std.mem.sort(Q, s.quads, {}, Q.minAsc);
@@ -54,12 +52,12 @@ pub fn TagedSap(T: type) type {
             return s.run();
         }
 
-        pub fn getPairs(s: *@This()) ![][2]T {
+        pub fn getPairs(s: *@This(), alloc: std.mem.Allocator) ![][2]T {
             s.sortQuads();
-            return s.getPairsAssumeSorted();
+            return s.getPairsAssumeSorted(alloc);
         }
-        pub fn getPairsAssumeSorted(s: *@This()) ![][2]T {
-            try s.resetLists(s.quads.len);
+        pub fn getPairsAssumeSorted(s: *@This(), alloc: std.mem.Allocator) ![][2]T {
+            try s.resetLists(alloc, s.quads.len);
 
             for (s.quads) |q| {
                 var j: usize = 0;
@@ -71,11 +69,11 @@ pub fn TagedSap(T: type) type {
                         s.active_list.items[j] = null;
                     } else {
                         //std.debug.print("reported pair:\n\t {} and {}\n", .{ q, a });
-                        try s.all_pairs.append(s.alloc, .{ q.tag, a.tag });
+                        try s.all_pairs.append(alloc, .{ q.tag, a.tag });
                     }
                 }
                 //std.debug.print("added to activeList:\n\t{}\n", .{q});
-                try s.active_list.append(s.alloc, q);
+                try s.active_list.append(alloc, q);
             }
 
             return s.all_pairs.items;

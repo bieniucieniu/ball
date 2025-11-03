@@ -2,7 +2,9 @@ const std = @import("std");
 const rl = @import("raylib");
 const rg = @import("raygui");
 const meta = std.meta;
-const LoopState = @import("../shared/loop/loop.zig");
+const Shared = @import("../shared.zig");
+const Loop = Shared.Loop;
+const Cli = Shared.Cli;
 const BallsState = @import("../free-moving-balls/free-moving-balls.zig");
 
 const StateEnum = enum { ball, none };
@@ -16,7 +18,7 @@ const StateType = union(StateEnum) {
 };
 width: i32 = 800,
 height: i32 = 450,
-args: ParsedArgs,
+args: Cli,
 allocator: std.mem.Allocator,
 state: StateType = .{ .none = undefined },
 backgroup_color: rl.Color = .white,
@@ -26,7 +28,11 @@ pub fn swapBackgroud(self: *@This()) void {
     self.backgroup_color = if (eqls) .black else .white;
 }
 pub fn init(allocator: std.mem.Allocator) !@This() {
-    const args = try parseArgs(allocator);
+    const args = try Cli.create(allocator, .{});
+    if (args.help) {
+        try Cli.printHelp(.stdout());
+        std.process.exit(0);
+    }
 
     return .{
         .args = args,
@@ -41,20 +47,19 @@ pub fn setState(s: *@This(), t: StateArgs) !void {
             if (count == 0) count = s.args.count;
             s.state = .{ .ball = try .init(s.allocator, count) };
             s.state.ball.updateBoundry(s.width, s.height);
-            try s.state.ball.appendBalls(count);
+            try s.state.ball.appendBalls(s.allocator, count);
         },
         .none => s.state = .{ .none = undefined },
     }
 }
 pub fn deinitState(s: *@This()) void {
     switch (s.state) {
-        .ball => s.state.ball.deinit(),
+        .ball => s.state.ball.deinit(s.allocator),
         .none => {},
     }
 }
 pub fn deinit(s: *@This()) void {
     s.deinitState();
-    s.args.deinit();
 }
 pub fn update(s: *@This(), delta: f32) void {
     s.width = rl.getScreenWidth();
@@ -62,7 +67,7 @@ pub fn update(s: *@This(), delta: f32) void {
     switch (s.state) {
         .ball => {
             s.state.ball.updateBoundry(s.width, s.height);
-            s.state.ball.update(delta);
+            s.state.ball.update(s.allocator, delta);
         },
         else => {},
     }
@@ -88,24 +93,4 @@ pub fn reset(s: *@This()) !void {
         .ball => try s.state.ball.reset(),
         else => {},
     }
-}
-pub const ParsedArgs = struct {
-    count: usize = 2_000,
-    args: std.process.ArgIterator,
-    fn deinit(s: *@This()) void {
-        s.args.deinit();
-    }
-};
-pub fn parseArgs(allocator: std.mem.Allocator) !ParsedArgs {
-    var args = try std.process.argsWithAllocator(allocator);
-    _ = args.skip();
-    const count: usize = getArgsNextInt(&args) catch 2_000;
-    return .{
-        .count = count,
-        .args = args,
-    };
-}
-pub fn getArgsNextInt(args: *std.process.ArgIterator) !usize {
-    const a = args.next() orelse return error.Null;
-    return try std.fmt.parseInt(usize, std.mem.sliceTo(a, 0), 0);
 }

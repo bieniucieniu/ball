@@ -7,9 +7,12 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    const clap_dep = b.dependency("clap", .{});
+
     const raylib = raylib_dep.module("raylib"); // main raylib module
     const raygui = raylib_dep.module("raygui"); // raygui module
     const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
+    const clap = clap_dep.module("clap");
 
     const mod = b.addModule("ball", .{
         .root_source_file = b.path("src/root.zig"),
@@ -17,6 +20,7 @@ pub fn build(b: *std.Build) void {
         .imports = &.{
             .{ .name = "raylib", .module = raylib },
             .{ .name = "raygui", .module = raygui },
+            .{ .name = "clap", .module = clap },
         },
     });
 
@@ -33,13 +37,12 @@ pub fn build(b: *std.Build) void {
             },
         }),
     });
-    if (optimize == .ReleaseFast or optimize == .ReleaseSafe or optimize == .ReleaseSmall) {
+    if (optimize != .Debug)
         switch (target.result.os.tag) {
             .linux, .macos => exe.subsystem = .Posix,
             .windows => exe.subsystem = .Windows,
             else => {},
-        }
-    }
+        };
 
     b.installArtifact(exe);
 

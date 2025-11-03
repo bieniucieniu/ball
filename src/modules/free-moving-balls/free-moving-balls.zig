@@ -5,12 +5,11 @@ pub const Ball = @import("./entities/ball.zig");
 const Loop = Shared.Loop;
 const meta = std.meta;
 
-alloc: std.mem.Allocator,
 width: i32 = 800,
 height: i32 = 450,
 friction: f32 = 0.01,
 balls: std.ArrayList(Ball),
-ballsMAL: std.MultiArrayList(Ball) = .{},
+balls_mal: std.MultiArrayList(Ball) = .{},
 balls_boundry: rl.Vector4 = .init(0, 0, 800, 450),
 balls_sap: Shared.Sap.TagedSap(*Ball),
 pub fn createRandomBall(s: *@This(), rand: *const std.Random) Ball {
@@ -25,14 +24,14 @@ pub fn createRandomBall(s: *@This(), rand: *const std.Random) Ball {
     return ball;
 }
 
-pub fn appendBalls(s: *@This(), count: usize) !void {
+pub fn appendBalls(s: *@This(), alloc: std.mem.Allocator, count: usize) !void {
     var prng = std.Random.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
         try std.posix.getrandom(std.mem.asBytes(&seed));
         break :blk seed;
     });
     const rand = prng.random();
-    for (try s.balls.addManyAsSlice(s.alloc, count)) |*b| {
+    for (try s.balls.addManyAsSlice(alloc, count)) |*b| {
         b.* = s.createRandomBall(&rand);
     }
 }
@@ -51,7 +50,6 @@ pub fn reset(s: *@This()) !void {
 
 pub fn init(allocactor: std.mem.Allocator, balls: usize) !@This() {
     return .{
-        .alloc = allocactor,
         .balls = try std.ArrayList(Ball).initCapacity(allocactor, @max(64, balls)),
         .balls_sap = try .init(allocactor, balls),
     };
@@ -59,14 +57,16 @@ pub fn init(allocactor: std.mem.Allocator, balls: usize) !@This() {
 pub fn setupState(s: *@This()) !void {
     return s.update(0);
 }
-pub fn deinit(s: *@This()) void {
-    _ = s;
+pub fn deinit(s: *@This(), alloc: std.mem.Allocator) void {
+    s.balls_sap.deinit(alloc);
+    s.balls_mal.deinit(alloc);
+    s.balls.deinit(alloc);
 }
 pub fn updateBoundry(s: *@This(), width: i32, height: i32) void {
     s.balls_boundry = .init(20, 64, @floatFromInt(width - 20), @floatFromInt(height - 20));
 }
-pub fn update(s: *@This(), delta: f32) void {
-    for (s.balls_sap.setQuadsAsSlice(s.balls.items.len) catch return, 0..) |*q, i| {
+pub fn update(s: *@This(), alloc: std.mem.Allocator, delta: f32) void {
+    for (s.balls_sap.setQuadsAsSlice(alloc, s.balls.items.len) catch return, 0..) |*q, i| {
         const b = &s.balls.items[i];
         b.border_color = .gray;
         b.update(delta);
@@ -77,7 +77,7 @@ pub fn update(s: *@This(), delta: f32) void {
     }
     s.balls_sap.sortQuads();
 
-    for (s.balls_sap.getPairs() catch return) |pair| {
+    for (s.balls_sap.getPairs(alloc) catch return) |pair| {
         const a, const b = pair;
         if (a.state.checkColision(&b.state, delta)) |_| {
             a.border_color = .blue;
