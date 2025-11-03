@@ -79,6 +79,7 @@ pub fn update(s: *@This(), alloc: std.mem.Allocator, delta: f32) void {
         const a, const b = pair;
         if (a.state.checkColision(&b.state, delta)) |_| {
             a.border_color = .blue;
+            b.border_color = .blue;
         }
     }
 }

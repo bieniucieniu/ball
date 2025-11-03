@@ -199,25 +199,12 @@ pub fn init(boundry: *rl.Vector4) @This() {
     return .{ .state = .init(boundry) };
 }
 pub fn draw(s: *@This()) void {
-    const angle = std.math.radiansToDegrees(
-        std.math.atan2(
-            s.state.force.y,
-            s.state.force.x,
-        ),
-    );
-    // rl.drawText(
-    //     rl.textFormat("%.0f", .{angle}),
-    //     @as(i32, @intFromFloat(s.state.position.x)),
-    //     @as(i32, @intFromFloat(s.state.position.y)),
-    //     20,
-    //     s.border_color,
-    // );
     rl.drawRing(
         s.state.position,
         s.state.width,
         s.state.width + s.border_width,
-        angle - 90,
-        90 + angle,
+        0,
+        360,
         12,
         s.border_color,
     );
