@@ -79,41 +79,8 @@ pub fn update(s: *@This(), alloc: std.mem.Allocator, delta: f32) void {
         const a, const b = pair;
         if (a.state.checkColision(&b.state, delta)) |_| {
             a.border_color = .blue;
-
-            // const normal = a.state.position.subtract(b.state.position).normalize();
-            // const tangent = rl.Vector2.init(-normal.x, normal.y);
-            // const van = a.state.force.dotProduct(normal);
-            // const vat = a.state.force.dotProduct(tangent);
-            // const vbn = b.state.force.dotProduct(normal);
-            // const vbt = b.state.force.dotProduct(tangent);
-            // const totalMass = a.state.mass + b.state.mass;
-            // const van_prime = (van * (a.state.mass - b.state.mass) + 2.0 * b.state.mass * vbn) / totalMass;
-            // const vbn_prime = (vbn * (b.state.mass - a.state.mass) + 2.0 * a.state.mass * van) / totalMass;
-            // // New normal component vector
-            // const van_vec_prime = normal.scale(van_prime);
-            // const vbn_vec_prime = normal.scale(vbn_prime);
-            //
-            // // New tangential component vector
-            // const vat_vec_prime = tangent.scale(vat);
-            // const vbt_vec_prime = tangent.scale(vbt);
-            //
-            // // Final new velocity vectors
-            // a.state.force = van_vec_prime.add(vat_vec_prime);
-            // b.state.force = vbn_vec_prime.add(vbt_vec_prime);
         }
     }
-    // for (s.balls.items, 0..) |*ball, i| {
-    //     ball.border_color = .gray;
-    //     ball.update(delta);
-    //     inner: for (s.balls.items[(i + 1)..]) |*other| {
-    //         if (ball.state.checkColision(&other.state, delta)) |p| {
-    //             _ = p;
-    //             ball.border_color = .blue;
-    //             other.border_color = .blue;
-    //             break :inner;
-    //         }
-    //     }
-    // }
 }
 pub inline fn draw(s: *@This()) void {
     const boundry: rl.Rectangle = .init(

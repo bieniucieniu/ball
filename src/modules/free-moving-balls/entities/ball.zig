@@ -9,7 +9,6 @@ state: State,
 color: rl.Color = .white,
 border_color: rl.Color = .gray,
 border_width: f32 = 2,
-is_hold: bool = false,
 
 pub const State = struct {
     position: rl.Vector2 = .init(0, 0),
@@ -17,6 +16,7 @@ pub const State = struct {
     width: f32 = 12,
     mass: f32 = 30,
     boundry: *rl.Vector4,
+    is_hold: bool = false,
     pub fn init(boundry: *rl.Vector4) @This() {
         return .{ .boundry = boundry };
     }
@@ -85,16 +85,15 @@ pub const State = struct {
         const per_s = delta * (1_000 / s.mass);
         return per_s;
     }
-    fn applyMouseAction(s: *@This(), is_hold: bool) ?bool {
+    fn applyMouseAction(s: *@This()) void {
         const mouse = getMouse(rl.getMousePosition(), s.boundry.*);
         const mouse_down = rl.isMouseButtonDown(.left);
         if (mouse_down) {
-            if (mouse.distance(s.position) < s.width or is_hold) {
+            if (mouse.distance(s.position) < s.width or s.is_hold) {
                 s.force = mouse.subtract(s.position);
-                return true;
+                s.is_hold = true;
             }
-        } else return false;
-        return null;
+        } else s.is_hold = false;
     }
     fn applyBoundryColisions(s: *@This(), target: *rl.Vector2) void {
         const crossed = s.boundriesCrossed(target.*);
@@ -190,9 +189,7 @@ pub const State = struct {
     }
 };
 pub fn update(s: *@This(), delta: f32) void {
-    if (s.state.applyMouseAction(s.is_hold)) |is_hold| {
-        s.is_hold = is_hold;
-    }
+    s.state.applyMouseAction();
     var target = s.state.getNextPosition(delta);
     s.state.applyBoundryColisions(&target);
     s.state.position = target;
@@ -202,21 +199,25 @@ pub fn init(boundry: *rl.Vector4) @This() {
     return .{ .state = .init(boundry) };
 }
 pub fn draw(s: *@This()) void {
-    // const force = s.state.force;
-    // const transform_vec = force.normalize().scale(s.state.width);
-    // const target_vec = s.state.position.add(force.scale(0.1));
-    // rl.drawLineEx(
-    //     s.state.position.add(transform_vec),
-    //     target_vec.add(transform_vec),
-    //     1,
-    //     s.border_color.alpha(0.1),
+    const angle = std.math.radiansToDegrees(
+        std.math.atan2(
+            s.state.force.y,
+            s.state.force.x,
+        ),
+    );
+    // rl.drawText(
+    //     rl.textFormat("%.0f", .{angle}),
+    //     @as(i32, @intFromFloat(s.state.position.x)),
+    //     @as(i32, @intFromFloat(s.state.position.y)),
+    //     20,
+    //     s.border_color,
     // );
     rl.drawRing(
         s.state.position,
         s.state.width,
         s.state.width + s.border_width,
-        0,
-        360,
+        angle - 90,
+        90 + angle,
         12,
         s.border_color,
     );

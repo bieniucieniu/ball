@@ -18,7 +18,7 @@ const StateType = union(StateEnum) {
 };
 width: i32 = 800,
 height: i32 = 450,
-options: Cli,
+options: Cli = .{},
 state: StateType = .{ .none = undefined },
 backgroup_color: rl.Color = .white,
 
@@ -26,16 +26,18 @@ pub fn swapBackgroud(self: *@This()) void {
     const eqls = meta.eql(self.backgroup_color, .white);
     self.backgroup_color = if (eqls) .black else .white;
 }
-pub fn init(allocator: std.mem.Allocator) !@This() {
-    const options = try Cli.create(allocator, .{});
+
+pub fn configurate(s: *@This(), alloc: std.mem.Allocator, options: Cli) !void {
     if (options.help) {
         try Cli.printHelp(.stdout());
         std.process.exit(0);
     }
+    s.options = options;
 
-    return .{
-        .options = options,
-    };
+    switch (options.mode) {
+        .ball => try s.setState(alloc, .{ .ball = .{} }),
+        .none => try s.setState(alloc, .{ .none = undefined }),
+    }
 }
 pub fn setState(s: *@This(), alloc: std.mem.Allocator, t: StateArgs) !void {
     s.deinitState(alloc);

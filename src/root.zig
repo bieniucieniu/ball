@@ -7,10 +7,12 @@ const Loop = shared.Loop;
 const App = @import("./modules/app/app.zig");
 const meta = std.meta;
 const bufPrint = std.fmt.bufPrint;
+const Cli = shared.Cli;
 
 pub fn run(allocator: std.mem.Allocator) !void {
     var loop: Loop = .init(240);
-    var app: App = try .init(allocator);
+    var app: App = .{};
+    try app.configurate(allocator, try Cli.create(allocator, .{}));
     defer app.deinit(allocator);
 
     rl.setConfigFlags(.{ .window_resizable = true });
