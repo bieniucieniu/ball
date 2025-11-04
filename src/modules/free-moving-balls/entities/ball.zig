@@ -188,15 +188,15 @@ pub const State = struct {
         return s.position.add(vec);
     }
 
-    pub fn applyCollision(a: *@This(), b: *@This(), r: f32, _: f32) void {
+    pub fn applyCollision(a: *@This(), b: *@This(), r: f32) void {
         const delta = a.position.subtract(b.position);
         const d = delta.length();
         const mtd = delta.scale((a.width + b.width - d) / d);
         const im_a = 1 / a.mass;
         const im_b = 1 / b.mass;
 
-        a.position = a.position.add(mtd.scale(im_a / (im_a + im_b)));
-        b.position = b.position.subtract(mtd.scale(im_b / (im_a + im_b)));
+        a.position = a.position.add(mtd.scale(im_a * (a.mass + b.mass)));
+        b.position = b.position.subtract(mtd.scale(im_b * (a.mass + b.mass)));
 
         const v = a.force.subtract(b.force);
         const mtd_norm = mtd.normalize();
@@ -205,12 +205,11 @@ pub const State = struct {
 
         if (vn > 0) return;
 
-        const i = -(1 + r) * vn / (im_a + im_b);
+        const i = -(vn * r) / (im_a + im_b);
         const impulse = mtd_norm.scale(i);
-        std.debug.print("impulse: {} {}\n", .{ impulse, i });
 
-        // a.force = a.force.add(impulse);
-        // b.force = b.force.subtract(impulse);
+        a.force = a.force.add(impulse.scale(im_a));
+        b.force = b.force.subtract(impulse.scale(im_b));
     }
     pub fn applyCollision2(a: *@This(), b: *@This(), r: f32, delta: f32) void {
         const s = a.getScaler(delta);
