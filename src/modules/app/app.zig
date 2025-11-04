@@ -31,6 +31,7 @@ pub fn configurate(s: *@This(), alloc: std.mem.Allocator, options: Cli) !void {
     if (options.help) {
         try Cli.printHelp(.stdout());
         std.process.exit(0);
+        return;
     }
     s.options = options;
 

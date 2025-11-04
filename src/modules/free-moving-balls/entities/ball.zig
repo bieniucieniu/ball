@@ -187,6 +187,70 @@ pub const State = struct {
         const vec = s.force.scale(scaler);
         return s.position.add(vec);
     }
+
+    pub fn applyCollision(a: *@This(), b: *@This(), r: f32, delta: f32) void {
+        const s = a.getScaler(delta);
+        var af = a.force.scale(s);
+        const bf = b.force.scale(s);
+        const pba = b.position.subtract(a.position);
+        // x21=x2-x1;
+        // y21=y2-y1;
+
+        const vba = bf.subtract(af);
+        // vx21=vx2-vx1;
+        // vy21=vy2-vy1;
+
+        if (vba.dotProduct(pba) >= 0) return;
+        //if ((vx21 * x21 + vy21 * y21) >= 0) return;
+
+        const mba = b.mass / a.mass;
+        // m21=m2/m1;
+
+        const v_cm = (af.scale(a.mass).add(bf.scale(b.mass))).scale(1 / (a.mass + b.mass));
+        // vx_cm = (m1*vx1+m2*vx2)/(m1+m2) ;
+        // vy_cm = (m1*vy1+m2*vy2)/(m1+m2) ;
+
+        {
+            const tmp = 1.0E-12 * @abs(pba.y);
+            if (@abs(pba.x) < tmp)
+                af.x = if (pba.x < 0) -tmp else tmp;
+        }
+        // fy21 = 1.0E-12 * fabs(y21);
+        // if (fabs(x21) < fy21) {
+        //     if (x21 < 0) {
+        //         sign = -1;
+        //     } else {
+        //         sign = 1;
+        //     }
+        //     x21 = fy21 * sign;
+        // }
+
+        const aa = pba.y / pba.x;
+        // a=y21/x21;
+
+        // dvx2= -2*(vx21 +a*vy21)/((1+a*a)*(1+m21)) ;
+        const dv = -2 * (vba.x + aa * vba.y) / ((1 + aa * aa) * (1 + mba));
+
+        b.force.x = bf.x + dv;
+        // vx2=vx2+dvx2;
+        b.force.y = bf.y + aa * dv;
+        // vy2=vy2+a*dvx2;
+
+        a.force.x = af.x - mba * dv;
+        // vx1=vx1-m21*dvx2;
+
+        a.force.y = af.y - aa * mba * dv;
+        // vy1=vy1-a*m21*dvx2;
+
+        // ***  velocity correction for inelastic collisions ***
+        // vx1=(vx1-vx_cm)*R + vx_cm;
+        // vy1=(vy1-vy_cm)*R + vy_cm;
+        a.force = af.scale(r).add(v_cm);
+
+        // vx2=(vx2-vx_cm)*R + vx_cm;
+        // vy2=(vy2-vy_cm)*R + vy_cm;
+        b.force = bf.scale(r).add(v_cm);
+    }
 };
 pub fn update(s: *@This(), delta: f32) void {
     s.state.applyMouseAction();
