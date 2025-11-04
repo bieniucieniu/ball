@@ -188,10 +188,34 @@ pub const State = struct {
         return s.position.add(vec);
     }
 
-    pub fn applyCollision(a: *@This(), b: *@This(), r: f32, delta: f32) void {
+    pub fn applyCollision(a: *@This(), b: *@This(), r: f32, _: f32) void {
+        const delta = a.position.subtract(b.position);
+        const d = delta.length();
+        const mtd = delta.scale((a.width + b.width - d) / d);
+        const im_a = 1 / a.mass;
+        const im_b = 1 / b.mass;
+
+        a.position = a.position.add(mtd.scale(im_a / (im_a + im_b)));
+        b.position = b.position.subtract(mtd.scale(im_b / (im_a + im_b)));
+
+        const v = a.force.subtract(b.force);
+        const mtd_norm = mtd.normalize();
+
+        const vn = v.dotProduct(delta);
+
+        if (vn > 0) return;
+
+        const i = -(1 + r) * vn / (im_a + im_b);
+        const impulse = mtd_norm.scale(i);
+        std.debug.print("impulse: {} {}\n", .{ impulse, i });
+
+        // a.force = a.force.add(impulse);
+        // b.force = b.force.subtract(impulse);
+    }
+    pub fn applyCollision2(a: *@This(), b: *@This(), r: f32, delta: f32) void {
         const s = a.getScaler(delta);
         var af = a.force.scale(s);
-        const bf = b.force.scale(s);
+        var bf = b.force.scale(s);
         const pba = b.position.subtract(a.position);
         // x21=x2-x1;
         // y21=y2-y1;
@@ -206,7 +230,6 @@ pub const State = struct {
         const mba = b.mass / a.mass;
         // m21=m2/m1;
 
-        const v_cm = (af.scale(a.mass).add(bf.scale(b.mass))).scale(1 / (a.mass + b.mass));
         // vx_cm = (m1*vx1+m2*vx2)/(m1+m2) ;
         // vy_cm = (m1*vy1+m2*vy2)/(m1+m2) ;
 
@@ -229,27 +252,35 @@ pub const State = struct {
         // a=y21/x21;
 
         // dvx2= -2*(vx21 +a*vy21)/((1+a*a)*(1+m21)) ;
-        const dv = -2 * (vba.x + aa * vba.y) / ((1 + aa * aa) * (1 + mba));
+        const dv = -2 * (vba.x + aa * vba.y) / ((1 + (aa * aa)) * (1 + mba));
 
-        b.force.x = bf.x + dv;
         // vx2=vx2+dvx2;
-        b.force.y = bf.y + aa * dv;
         // vy2=vy2+a*dvx2;
+        const bfp: rl.Vector2 = .{
+            .x = bf.x + dv,
+            .y = bf.y + aa * dv,
+        };
+        std.debug.print("bf: {} bfp: {} \ndv: {} aa: {}  dot: {} \n", .{ b.force, bfp, dv, aa, bf.dotProduct(bfp) });
+        b.force = bfp;
 
-        a.force.x = af.x - mba * dv;
         // vx1=vx1-m21*dvx2;
-
-        a.force.y = af.y - aa * mba * dv;
         // vy1=vy1-a*m21*dvx2;
+        const afp: rl.Vector2 = .{
+            .x = af.x - mba * dv,
+            .y = af.y - aa * mba * dv,
+        };
+        a.force = afp;
 
+        //_ = r;
+        const v_cm = (af.scale(a.mass).add(bf.scale(b.mass))).scale(1 / (a.mass + b.mass));
         // ***  velocity correction for inelastic collisions ***
+        a.force = af.subtract(v_cm).scale(r).add(v_cm);
         // vx1=(vx1-vx_cm)*R + vx_cm;
         // vy1=(vy1-vy_cm)*R + vy_cm;
-        a.force = af.scale(r).add(v_cm);
 
+        b.force = bf.subtract(v_cm).scale(r).add(v_cm);
         // vx2=(vx2-vx_cm)*R + vx_cm;
         // vy2=(vy2-vy_cm)*R + vy_cm;
-        b.force = bf.scale(r).add(v_cm);
     }
 };
 pub fn update(s: *@This(), delta: f32) void {
