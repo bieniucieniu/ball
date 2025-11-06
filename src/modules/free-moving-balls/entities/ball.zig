@@ -195,17 +195,17 @@ pub const State = struct {
         const im_a = 1 / a.mass;
         const im_b = 1 / b.mass;
 
-        a.position = a.position.add(mtd.scale(im_a * (a.mass + b.mass)));
-        b.position = b.position.subtract(mtd.scale(im_b * (a.mass + b.mass)));
+        a.position = a.position.add(mtd.scale(im_a / (im_a + im_b)));
+        b.position = b.position.subtract(mtd.scale(im_b / (im_a + im_b)));
 
         const v = a.force.subtract(b.force);
         const mtd_norm = mtd.normalize();
 
-        const vn = v.dotProduct(delta);
+        const vn = v.dotProduct(mtd_norm);
 
-        if (vn > 0) return;
+        if (vn >= 0) return;
 
-        const i = -(vn * r) / (im_a + im_b);
+        const i = -(vn + r) / (im_a + im_b);
         const impulse = mtd_norm.scale(i);
 
         a.force = a.force.add(impulse.scale(im_a));

@@ -81,7 +81,11 @@ pub fn update(s: *@This(), alloc: std.mem.Allocator, delta: f32) void {
             a.border_color = .blue;
             b.border_color = .blue;
 
-            a.state.applyCollision(&b.state, 0.1);
+            a.state.applyCollision(
+                &b.state,
+                // magic number 0.1 is a magic number
+                1,
+            );
         }
     }
 }
