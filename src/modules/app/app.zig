@@ -67,7 +67,8 @@ pub fn update(s: *@This(), alloc: std.mem.Allocator, delta: f32) void {
     s.height = rl.getScreenHeight();
     switch (s.state) {
         .ball => {
-            s.state.ball.updateBoundry(s.width, s.height);
+            //s.state.ball.updateBoundry(s.width, s.height);
+            s.state.ball.balls_boundry = .init(20, 64, @floatFromInt(s.width - 20), @floatFromInt(s.height - 20));
             s.state.ball.update(alloc, delta);
         },
         else => {},
@@ -76,7 +77,6 @@ pub fn update(s: *@This(), alloc: std.mem.Allocator, delta: f32) void {
 // alloc should be removed from draw
 pub inline fn draw(s: *@This(), alloc: std.mem.Allocator) void {
     rl.clearBackground(s.backgroup_color);
-
     if (rg.button(.init(24, 24, 120, 24), "btn")) s.swapBackgroud();
     if (rg.button(.init(160, 24, 120, 24), "ball")) {
         switch (s.state) {

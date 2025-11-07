@@ -12,6 +12,7 @@ balls: std.ArrayList(Ball),
 balls_mal: std.MultiArrayList(Ball) = .{},
 balls_boundry: rl.Vector4 = .init(0, 0, 800, 450),
 balls_sap: Shared.Sap.TagedSap(*Ball),
+restitution: f32 = 1,
 pub fn createRandomBall(s: *@This(), rand: *const std.Random) Ball {
     var ball: Ball = .init(&s.balls_boundry);
     ball.state.position = .init(
@@ -66,7 +67,7 @@ pub fn updateBoundry(s: *@This(), width: i32, height: i32) void {
 pub fn update(s: *@This(), alloc: std.mem.Allocator, delta: f32) void {
     for (s.balls_sap.setQuadsAsSlice(alloc, s.balls.items.len) catch return, 0..) |*q, i| {
         const b = &s.balls.items[i];
-        b.border_color = .gray;
+        // b.border_color = .gray;
         b.update(delta);
 
         const x = b.state.position.x;
@@ -78,13 +79,12 @@ pub fn update(s: *@This(), alloc: std.mem.Allocator, delta: f32) void {
     for (s.balls_sap.getPairs(alloc) catch return) |pair| {
         const a, const b = pair;
         if (a.state.checkColision(&b.state, delta)) |_| {
-            a.border_color = .blue;
-            b.border_color = .blue;
+            // a.border_color = .blue;
+            // b.border_color = .blue;
 
             a.state.applyCollision(
                 &b.state,
-                // magic number 0.1 is a magic number
-                1,
+                s.restitution,
             );
         }
     }
