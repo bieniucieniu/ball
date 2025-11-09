@@ -63,16 +63,12 @@ pub fn TagedSap(T: type) type {
                 var j: usize = 0;
                 inner: while (j < s.active_list.items.len) : (j += 1) {
                     const a = s.active_list.items[j] orelse continue :inner;
-                    //std.debug.print("comparing:\n\t {} and {}\n", .{ q, a });
                     if (q.min > a.max) {
-                        //std.debug.print("poping:\n\t{?}\n", .{s.active_list.items[j]});
                         s.active_list.items[j] = null;
                     } else {
-                        //std.debug.print("reported pair:\n\t {} and {}\n", .{ q, a });
                         try s.all_pairs.append(alloc, .{ q.tag, a.tag });
                     }
                 }
-                //std.debug.print("added to activeList:\n\t{}\n", .{q});
                 try s.active_list.append(alloc, q);
             }
 

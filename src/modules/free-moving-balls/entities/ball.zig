@@ -194,9 +194,10 @@ pub const State = struct {
         const mtd = delta.scale((a.width + b.width - d) / d);
         const im_a = 1 / a.mass;
         const im_b = 1 / b.mass;
+        const iim = 1 / (im_a + im_b);
 
-        a.position = a.position.add(mtd.scale(im_a / (im_a + im_b)));
-        b.position = b.position.subtract(mtd.scale(im_b / (im_a + im_b)));
+        a.position = a.position.add(mtd.scale(im_a * iim));
+        b.position = b.position.subtract(mtd.scale(im_b * iim));
 
         const v = a.force.subtract(b.force);
         const mtd_norm = mtd.normalize();
@@ -205,7 +206,7 @@ pub const State = struct {
 
         if (vn >= 0) return;
 
-        const i = -(vn + r) / (im_a + im_b);
+        const i = -(vn + r) * iim;
         const impulse = mtd_norm.scale(i);
 
         a.force = a.force.add(impulse.scale(im_a));
