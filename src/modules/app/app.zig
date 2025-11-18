@@ -4,7 +4,7 @@ const rg = @import("raygui");
 const meta = std.meta;
 const Shared = @import("../shared.zig");
 const Loop = Shared.Loop;
-const Cli = Shared.Cli;
+const Options = Shared.Options;
 const BallsState = @import("../free-moving-balls/free-moving-balls.zig");
 
 const StateEnum = enum { ball, none };
@@ -18,7 +18,7 @@ const StateType = union(StateEnum) {
 };
 width: i32 = 800,
 height: i32 = 450,
-options: Cli = .{},
+options: Options = .{},
 state: StateType = .{ .none = undefined },
 backgroup_color: rl.Color = .white,
 
@@ -27,9 +27,9 @@ pub fn swapBackgroud(self: *@This()) void {
     self.backgroup_color = if (eqls) .black else .white;
 }
 
-pub fn configurate(s: *@This(), alloc: std.mem.Allocator, options: Cli) !void {
+pub fn configurate(s: *@This(), alloc: std.mem.Allocator, options: Options) !void {
     if (options.help) {
-        try Cli.printHelp(.stdout());
+        try Options.printHelp(.stdout());
         std.process.exit(0);
         return;
     }

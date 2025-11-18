@@ -121,13 +121,11 @@ fn BufferedChan(comptime T: type, comptime bufSize: u8) type {
             self.mut.lock();
             errdefer self.mut.unlock();
 
-            // case: value in buffer
             const l = self.len();
             if (l > 0 and bufSize > 0) {
                 defer self.mut.unlock();
                 const val = self.buf[0] orelse return ChanError.DataCorruption;
 
-                // advance items in buffer
                 if (l > 1) {
                     for (self.buf[1..l], 0..l - 1) |item, i| {
                         self.buf[i] = item;
@@ -135,7 +133,6 @@ fn BufferedChan(comptime T: type, comptime bufSize: u8) type {
                 }
                 self.buf[l - 1] = null;
 
-                // top up buffer with a waiting sender, if any
                 if (self.sendQ.items.len > 0) {
                     var sender: *Sender = self.sendQ.orderedRemove(0);
                     const valFromSender: T = sender.getDataAndSignal();
@@ -145,8 +142,6 @@ fn BufferedChan(comptime T: type, comptime bufSize: u8) type {
                 return val;
             }
 
-            // case: sender already waiting
-            // pull sender and take its data. Signal sender that it's done waiting.
             if (self.sendQ.items.len > 0) {
                 defer self.mut.unlock();
                 var sender: *Sender = self.sendQ.orderedRemove(0);
@@ -154,19 +149,15 @@ fn BufferedChan(comptime T: type, comptime bufSize: u8) type {
                 return data;
             }
 
-            // hold on receiver queue. Senders will signal when they take it.
             var receiver = Receiver{};
 
-            // prime condition
             receiver.mut.lock();
             defer receiver.mut.unlock();
 
             try self.recvQ.append(self.alloc, &receiver);
             self.mut.unlock();
 
-            // now wait for sender to signal receiver
             receiver.cond.wait(&receiver.mut);
-            // sender should have put data in .data
             if (receiver.data) |data| {
                 return data;
             } else {

@@ -1,7 +1,8 @@
 const std = @import("std");
 const clap = @import("clap");
+const Modes = @import("shared.zig").Modes;
 
-const Modes = enum { ball, none };
+pub const CLI = true;
 
 const parsers = .{
     .uint = clap.parsers.int(usize, 10),
