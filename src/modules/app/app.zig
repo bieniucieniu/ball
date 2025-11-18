@@ -21,6 +21,15 @@ height: i32 = 450,
 options: Options = .{},
 state: StateType = .{ .none = undefined },
 backgroup_color: rl.Color = .white,
+message_cannel: Shared.BufferedChan(Message) = .{},
+
+const Message = union(enum) {
+    none,
+    swap_background,
+    reset,
+    set_balls: usize,
+    set_none,
+};
 
 pub fn swapBackgroud(self: *@This()) void {
     const eqls = meta.eql(self.backgroup_color, .white);
@@ -75,15 +84,16 @@ pub fn update(s: *@This(), alloc: std.mem.Allocator, delta: f32) void {
     }
 }
 // alloc should be removed from draw
-pub inline fn draw(s: *@This(), alloc: std.mem.Allocator) void {
+pub inline fn draw(s: *@This(), _: std.mem.Allocator) void {
     rl.clearBackground(s.backgroup_color);
     if (rg.button(.init(24, 24, 120, 24), "btn")) s.swapBackgroud();
     if (rg.button(.init(160, 24, 120, 24), "ball")) {
-        switch (s.state) {
-            .ball => s.reset() catch {},
-            // alloc should be removed from draw
-            else => s.setState(alloc, .{ .ball = .{} }) catch {},
-        }
+        s.message_cannel.send(.{ .set_balls = 0 });
+        // switch (s.state) {
+        //     .ball => s.reset() catch {},
+        //     // alloc should be removed from draw
+        //     else => s.setState(alloc, .{ .ball = .{} }) catch {},
+        // }
     }
 
     switch (s.state) {

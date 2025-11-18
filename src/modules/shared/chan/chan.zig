@@ -7,14 +7,13 @@ const ChanError = error{
     DataCorruption,
 };
 
-fn Chan(comptime T: type) type {
+pub fn Chan(comptime T: type) type {
     return BufferedChan(T, 0);
 }
 
-fn BufferedChan(comptime T: type, comptime bufSize: u8) type {
+pub fn BufferedChan(comptime T: type, comptime bufSize: u8) type {
     return struct {
-        const Self = @This();
-        const bufType = [bufSize]?T;
+        pub const bufType = [bufSize]?T;
         buf: bufType = [_]?T{null} ** bufSize,
         closed: bool = false,
         mut: std.Thread.Mutex = .{},
@@ -22,7 +21,7 @@ fn BufferedChan(comptime T: type, comptime bufSize: u8) type {
         recvQ: std.ArrayListUnmanaged(*Receiver) = .{},
         sendQ: std.ArrayListUnmanaged(*Sender) = .{},
 
-        const Receiver = struct {
+        pub const Receiver = struct {
             mut: std.Thread.Mutex = std.Thread.Mutex{},
             cond: std.Thread.Condition = std.Thread.Condition{},
             data: ?T = null,
@@ -33,7 +32,7 @@ fn BufferedChan(comptime T: type, comptime bufSize: u8) type {
             }
         };
 
-        const Sender = struct {
+        pub const Sender = struct {
             mut: std.Thread.Mutex = std.Thread.Mutex{},
             cond: std.Thread.Condition = std.Thread.Condition{},
             data: T,
@@ -44,26 +43,26 @@ fn BufferedChan(comptime T: type, comptime bufSize: u8) type {
             }
         };
 
-        fn init(alloc: std.mem.Allocator) Self {
-            return Self{
+        pub fn init(alloc: std.mem.Allocator) @This() {
+            return .{
                 .alloc = alloc,
             };
         }
 
-        fn deinit(self: *Self) void {
+        pub fn deinit(self: *@This()) void {
             self.recvQ.deinit(self.alloc);
             self.sendQ.deinit(self.alloc);
         }
 
-        fn close(self: *Self) void {
+        pub fn close(self: *@This()) void {
             self.closed = true;
         }
 
-        fn capacity(self: *Self) u8 {
+        pub fn capacity(self: *@This()) u8 {
             return self.buf.len;
         }
 
-        fn debugBuf(self: *Self) void {
+        pub fn debugBuf(self: *@This()) void {
             std.debug.print("{d} Buffer debug\n", .{std.time.milliTimestamp()});
             for (self.buf, 0..) |item, i| {
                 if (item) |unwrapped| {
@@ -72,7 +71,7 @@ fn BufferedChan(comptime T: type, comptime bufSize: u8) type {
             }
         }
 
-        fn len(self: *Self) u8 {
+        pub fn len(self: *@This()) u8 {
             var i: u8 = 0;
             for (self.buf) |item| {
                 if (item) |_| {
@@ -84,7 +83,7 @@ fn BufferedChan(comptime T: type, comptime bufSize: u8) type {
             return i;
         }
 
-        fn send(self: *Self, data: T) ChanError!void {
+        pub fn send(self: *@This(), data: T) ChanError!void {
             if (self.closed) return ChanError.Closed;
 
             self.mut.lock();
@@ -116,7 +115,7 @@ fn BufferedChan(comptime T: type, comptime bufSize: u8) type {
             return;
         }
 
-        fn recv(self: *Self) ChanError!T {
+        pub fn recv(self: *@This()) ChanError!T {
             if (self.closed) return ChanError.Closed;
             self.mut.lock();
             errdefer self.mut.unlock();
@@ -127,9 +126,8 @@ fn BufferedChan(comptime T: type, comptime bufSize: u8) type {
                 const val = self.buf[0] orelse return ChanError.DataCorruption;
 
                 if (l > 1) {
-                    for (self.buf[1..l], 0..l - 1) |item, i| {
+                    for (self.buf[1..l], 0..l - 1) |item, i|
                         self.buf[i] = item;
-                    }
                 }
                 self.buf[l - 1] = null;
 
