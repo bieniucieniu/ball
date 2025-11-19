@@ -15,11 +15,13 @@ const params = clap.parseParamsComptime(
     \\-c, --count <uint>    count 
     \\-h, --help            help
     \\-m, --mode <mode>     mode
+    \\--single-threaded     single threaded
 );
 
 count: usize = 2_000,
 help: bool = false,
 mode: Modes = .none,
+single_threaded: bool = false,
 
 pub fn create(allocator: std.mem.Allocator, defaults: @This()) !@This() {
     var s: @This() = defaults;
@@ -36,6 +38,7 @@ pub fn create(allocator: std.mem.Allocator, defaults: @This()) !@This() {
     if (res.args.help != 0) s.help = true;
     if (res.args.count) |c| s.count = c;
     if (res.args.mode) |m| s.mode = m;
+    if (res.args.@"single-threaded" != 0) s.single_threaded = true;
 
     return s;
 }

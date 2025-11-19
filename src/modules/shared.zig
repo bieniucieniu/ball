@@ -7,3 +7,4 @@ pub const Options = if (buildin.target.os.tag == .emscripten) @import("shared/op
 const chan = @import("shared/chan/chan.zig");
 pub const Chan = chan.Chan;
 pub const BufferedChan = chan.BufferedChan;
+pub const BufferedChanUnmanaged = chan.BufferedChanUnmanaged;

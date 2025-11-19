@@ -31,9 +31,7 @@ pub fn appendBalls(s: *@This(), alloc: std.mem.Allocator, count: usize) !void {
         break :blk seed;
     });
     const rand = prng.random();
-    for (try s.balls.addManyAsSlice(alloc, count)) |*b| {
-        b.* = s.createRandomBall(&rand);
-    }
+    for (try s.balls.addManyAsSlice(alloc, count)) |*b| b.* = s.createRandomBall(&rand);
 }
 pub fn reset(s: *@This()) !void {
     var prng = std.Random.DefaultPrng.init(blk: {

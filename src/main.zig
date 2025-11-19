@@ -8,5 +8,5 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    return if (buildin.single_threaded) ball.runSingleThreaded(allocator) else ball.run(allocator);
+    return ball.run(allocator);
 }

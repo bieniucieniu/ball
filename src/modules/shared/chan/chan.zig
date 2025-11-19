@@ -2,6 +2,7 @@ const std = @import("std");
 
 const ChanError = error{
     Closed,
+    Locked,
     OutOfMemory,
     NotImplemented,
     DataCorruption,
@@ -13,11 +14,50 @@ pub fn Chan(comptime T: type) type {
 
 pub fn BufferedChan(comptime T: type, comptime bufSize: u8) type {
     return struct {
+        alloc: std.mem.Allocator,
+        impl: BufferedChanUnmanaged(T, bufSize) = .{},
+
+        pub fn init(alloc: std.mem.Allocator) @This() {
+            return .{
+                .alloc = alloc,
+            };
+        }
+
+        pub fn deinit(self: *@This()) void {
+            self.impl.deinit(self.alloc);
+        }
+
+        pub fn close(self: *@This()) void {
+            self.impl.close();
+        }
+
+        pub fn capacity(self: *@This()) u8 {
+            return self.impl.capacity();
+        }
+
+        pub fn debugBuf(self: *@This()) void {
+            self.impl.debugBuf();
+        }
+
+        pub fn len(self: *@This()) u8 {
+            return self.impl.len();
+        }
+
+        pub fn send(self: *@This(), data: T) ChanError!void {
+            return self.impl.send(self.alloc, data);
+        }
+
+        pub fn recv(self: *@This()) ChanError!T {
+            return self.impl.recv(self.alloc);
+        }
+    };
+}
+pub fn BufferedChanUnmanaged(comptime T: type, comptime bufSize: u8) type {
+    return struct {
         pub const bufType = [bufSize]?T;
         buf: bufType = [_]?T{null} ** bufSize,
         closed: bool = false,
         mut: std.Thread.Mutex = .{},
-        alloc: std.mem.Allocator,
         recvQ: std.ArrayListUnmanaged(*Receiver) = .{},
         sendQ: std.ArrayListUnmanaged(*Sender) = .{},
 
@@ -43,15 +83,9 @@ pub fn BufferedChan(comptime T: type, comptime bufSize: u8) type {
             }
         };
 
-        pub fn init(alloc: std.mem.Allocator) @This() {
-            return .{
-                .alloc = alloc,
-            };
-        }
-
-        pub fn deinit(self: *@This()) void {
-            self.recvQ.deinit(self.alloc);
-            self.sendQ.deinit(self.alloc);
+        pub fn deinit(self: *@This(), alloc: std.mem.Allocator) void {
+            self.recvQ.deinit(alloc);
+            self.sendQ.deinit(alloc);
         }
 
         pub fn close(self: *@This()) void {
@@ -83,7 +117,7 @@ pub fn BufferedChan(comptime T: type, comptime bufSize: u8) type {
             return i;
         }
 
-        pub fn send(self: *@This(), data: T) ChanError!void {
+        pub fn send(self: *@This(), alloc: std.mem.Allocator, data: T) ChanError!void {
             if (self.closed) return ChanError.Closed;
 
             self.mut.lock();
@@ -109,13 +143,41 @@ pub fn BufferedChan(comptime T: type, comptime bufSize: u8) type {
             sender.mut.lock();
             defer sender.mut.unlock();
 
-            try self.sendQ.append(self.alloc, &sender);
+            try self.sendQ.append(alloc, &sender);
             self.mut.unlock();
             sender.cond.wait(&sender.mut);
             return;
         }
 
-        pub fn recv(self: *@This()) ChanError!T {
+        pub fn recvNoBlock(self: *@This()) ?T {
+            if (self.closed) return null;
+            self.mut.lock();
+            errdefer self.mut.unlock();
+
+            const l = self.len();
+            if (l > 0 and bufSize > 0) {
+                defer self.mut.unlock();
+                const val = self.buf[0] orelse return null;
+
+                if (l > 1) {
+                    for (self.buf[1..l], 0..l - 1) |item, i|
+                        self.buf[i] = item;
+                }
+                self.buf[l - 1] = null;
+
+                if (self.sendQ.items.len > 0) {
+                    var sender: *Sender = self.sendQ.orderedRemove(0);
+                    const valFromSender: T = sender.getDataAndSignal();
+                    self.buf[l - 1] = valFromSender;
+                }
+
+                return val;
+            }
+
+            return null;
+        }
+
+        pub fn recv(self: *@This(), alloc: std.mem.Allocator) ChanError!T {
             if (self.closed) return ChanError.Closed;
             self.mut.lock();
             errdefer self.mut.unlock();
@@ -152,7 +214,7 @@ pub fn BufferedChan(comptime T: type, comptime bufSize: u8) type {
             receiver.mut.lock();
             defer receiver.mut.unlock();
 
-            try self.recvQ.append(self.alloc, &receiver);
+            try self.recvQ.append(alloc, &receiver);
             self.mut.unlock();
 
             receiver.cond.wait(&receiver.mut);
