@@ -7,19 +7,42 @@ const Loop = Shared.Loop;
 const Options = Shared.Options;
 const BallsState = @import("../free-moving-balls/free-moving-balls.zig");
 
-const StateEnum = enum { ball, none };
+const StateEnum = enum { ball };
 const StateArgs = union(StateEnum) {
     ball: struct { count: usize = 0 },
-    none: struct {},
 };
 const StateType = union(StateEnum) {
     ball: BallsState,
-    none: struct {},
+
+    pub fn deinit(s: *@This(), alloc: std.mem.Allocator) void {
+        switch (s.*) {
+            .ball => |*b| b.deinit(alloc),
+        }
+    }
+    pub inline fn draw(s: *@This()) void {
+        switch (s.*) {
+            .ball => |*b| b.draw(),
+        }
+    }
+    pub fn update(s: *@This(), alloc: std.mem.Allocator, boundry: rl.Vector4, delta: f32) void {
+        switch (s.*) {
+            .ball => |*b| {
+                b.balls_boundry = boundry;
+                b.update(alloc, delta);
+            },
+        }
+    }
+
+    pub fn reset(s: *@This()) !void {
+        switch (s.*) {
+            .ball => |*b| try b.reset(),
+        }
+    }
 };
 width: i32 = 800,
 height: i32 = 450,
 options: Options = .{},
-state: StateType = .{ .none = undefined },
+state: ?*StateType = null,
 backgroup_color: rl.Color = .white,
 messanger: Shared.MessageQueue(Message, .{ .buffer_size = 256 }) = .{},
 alloc: std.mem.Allocator,
@@ -49,30 +72,40 @@ pub fn configurate(s: *@This(), options: Options) !void {
 
     switch (options.mode) {
         .ball => try s.setState(.{ .ball = .{} }),
-        .none => try s.setState(.{ .none = undefined }),
+        .none => try s.setState(null),
     }
 }
-pub fn setState(s: *@This(), t: StateArgs) !void {
-    s.deinitState();
-    switch (t) {
-        .ball => {
-            var count = t.ball.count;
-            if (count == 0) count = s.options.count;
-            s.state = .{ .ball = try .init(s.alloc, count) };
-            s.state.ball.updateBoundry(s.width, s.height);
-            try s.state.ball.appendBalls(s.alloc, count);
-        },
-        .none => s.state = .{ .none = undefined },
+pub fn setState(s: *@This(), args: ?StateArgs) !void {
+    const prev = s.state;
+    if (args) |t| {
+        switch (t) {
+            .ball => {
+                var count = t.ball.count;
+                if (count == 0) count = s.options.count;
+
+                var ptr = try s.alloc.create(StateType);
+                errdefer s.alloc.destroy(ptr);
+
+                ptr.* = .{ .ball = try .init(s.alloc, count) };
+                errdefer ptr.deinit(s.alloc);
+
+                ptr.ball.updateBoundry(s.width, s.height);
+                try ptr.ball.appendBalls(s.alloc, count);
+
+                s.state = ptr;
+            },
+        }
+    } else {
+        s.state = null;
+    }
+    if (prev) |p| {
+        p.deinit(s.alloc);
+        s.alloc.destroy(p);
     }
 }
-pub fn deinitState(s: *@This()) void {
-    switch (s.state) {
-        .ball => s.state.ball.deinit(s.alloc),
-        .none => {},
-    }
-}
+
 pub fn deinit(s: *@This()) void {
-    s.deinitState();
+    if (s.state) |*st| st.*.deinit(s.alloc);
 }
 pub fn update(s: *@This(), delta: f32) void {
     s.width = rl.getScreenWidth();
@@ -83,18 +116,20 @@ pub fn update(s: *@This(), delta: f32) void {
             .swap_background => s.swapBackgroud(),
             .reset => s.reset() catch {},
             .set_balls => s.setState(.{ .ball = .{ .count = msg.set_balls } }) catch {},
-            .set_none => s.setState(.{ .none = undefined }) catch {},
+            .set_none => s.setState(null) catch {},
         }
     } else {}
 
-    switch (s.state) {
-        .ball => {
-            //s.state.ball.updateBoundry(s.width, s.height);
-            s.state.ball.balls_boundry = .init(20, 64, @floatFromInt(s.width - 20), @floatFromInt(s.height - 20));
-            s.state.ball.update(s.alloc, delta);
-        },
-        else => {},
-    }
+    if (s.state) |state| state.update(
+        s.alloc,
+        .init(
+            20,
+            64,
+            @floatFromInt(s.width - 20),
+            @floatFromInt(s.height - 20),
+        ),
+        delta,
+    );
 }
 // alloc should be removed from draw
 pub inline fn draw(s: *@This()) void {
@@ -109,14 +144,8 @@ pub inline fn draw(s: *@This()) void {
         // }
     }
 
-    switch (s.state) {
-        .ball => s.state.ball.draw(),
-        else => {},
-    }
+    if (s.state) |state| state.draw();
 }
 pub fn reset(s: *@This()) !void {
-    switch (s.state) {
-        .ball => try s.state.ball.reset(),
-        else => {},
-    }
+    if (s.state) |*state| try state.*.reset();
 }

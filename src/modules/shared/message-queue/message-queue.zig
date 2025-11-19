@@ -32,7 +32,6 @@ pub fn MessageQueue(comptime T: type, comptime options: Options) type {
 
             for (0..s.buffer.len - 1) |i| {
                 const idx = (s.pivot + i) % s.buffer.len;
-                std.debug.print("idx: {} i: {} len: {}\n", .{ idx, i, s.buffer.len });
                 if (s.buffer[idx] == null) {
                     s.buffer[idx] = data;
                     return;
