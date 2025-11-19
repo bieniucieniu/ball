@@ -3,6 +3,7 @@ const std = @import("std");
 const ChanError = error{
     Closed,
     Locked,
+    Empty,
     OutOfMemory,
     NotImplemented,
     DataCorruption,
@@ -149,15 +150,15 @@ pub fn BufferedChanUnmanaged(comptime T: type, comptime bufSize: u8) type {
             return;
         }
 
-        pub fn recvNoBlock(self: *@This()) ?T {
-            if (self.closed) return null;
-            self.mut.lock();
+        pub fn recvNoBlock(self: *@This()) ChanError!T {
+            if (self.closed) return ChanError.Closed;
+            if (!self.mut.tryLock()) return ChanError.Locked;
             errdefer self.mut.unlock();
 
             const l = self.len();
             if (l > 0 and bufSize > 0) {
                 defer self.mut.unlock();
-                const val = self.buf[0] orelse return null;
+                const val = self.buf[0] orelse return ChanError.DataCorruption;
 
                 if (l > 1) {
                     for (self.buf[1..l], 0..l - 1) |item, i|
@@ -174,7 +175,7 @@ pub fn BufferedChanUnmanaged(comptime T: type, comptime bufSize: u8) type {
                 return val;
             }
 
-            return null;
+            return ChanError.Empty;
         }
 
         pub fn recv(self: *@This(), alloc: std.mem.Allocator) ChanError!T {

@@ -8,3 +8,7 @@ const chan = @import("shared/chan/chan.zig");
 pub const Chan = chan.Chan;
 pub const BufferedChan = chan.BufferedChan;
 pub const BufferedChanUnmanaged = chan.BufferedChanUnmanaged;
+const message_queue = @import("shared/message-queue/message-queue.zig");
+pub const MessageQueue = message_queue.MessageQueue;
+pub const MessageQueueSendError = message_queue.MessageQueueSendError;
+pub const MessageQueueOptions = message_queue.Options;

@@ -21,7 +21,7 @@ height: i32 = 450,
 options: Options = .{},
 state: StateType = .{ .none = undefined },
 backgroup_color: rl.Color = .white,
-message_cannel: Shared.BufferedChanUnmanaged(Message, 255) = .{},
+messanger: Shared.MessageQueue(Message, .{ .buffer_size = 256 }) = .{},
 alloc: std.mem.Allocator,
 
 const Message = union(enum) {
@@ -78,7 +78,7 @@ pub fn update(s: *@This(), delta: f32) void {
     s.width = rl.getScreenWidth();
     s.height = rl.getScreenHeight();
 
-    while (s.message_cannel.recvNoBlock()) |msg| {
+    while (s.messanger.receive()) |msg| {
         switch (msg) {
             .swap_background => s.swapBackgroud(),
             .reset => s.reset() catch {},
@@ -101,7 +101,7 @@ pub inline fn draw(s: *@This()) void {
     rl.clearBackground(s.backgroup_color);
     if (rg.button(.init(24, 24, 120, 24), "btn")) s.swapBackgroud();
     if (rg.button(.init(160, 24, 120, 24), "ball")) {
-        s.message_cannel.send(s.alloc, .{ .set_balls = 0 }) catch {};
+        s.messanger.send(.{ .set_balls = 0 }) catch {};
         // switch (s.state) {
         //     .ball => s.reset() catch {},
         //     // alloc should be removed from draw
