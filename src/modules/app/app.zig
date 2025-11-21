@@ -43,6 +43,7 @@ width: i32 = 800,
 height: i32 = 450,
 options: Options = .{},
 state: ?*StateType = null,
+state_mutex: std.Thread.Mutex = .{},
 backgroup_color: rl.Color = .white,
 messanger: Shared.MessageQueue(Message, .{ .buffer_size = 256 }) = .{},
 alloc: std.mem.Allocator,
@@ -76,7 +77,14 @@ pub fn configurate(s: *@This(), options: Options) !void {
     }
 }
 pub fn setState(s: *@This(), args: ?StateArgs) !void {
+    s.state_mutex.lock();
+    defer s.state_mutex.unlock();
+
     const prev = s.state;
+    defer if (prev) |p| {
+        p.deinit(s.alloc);
+        s.alloc.destroy(p);
+    };
     if (args) |t| {
         switch (t) {
             .ball => {
@@ -98,14 +106,13 @@ pub fn setState(s: *@This(), args: ?StateArgs) !void {
     } else {
         s.state = null;
     }
-    if (prev) |p| {
-        p.deinit(s.alloc);
-        s.alloc.destroy(p);
-    }
 }
 
 pub fn deinit(s: *@This()) void {
-    if (s.state) |*st| st.*.deinit(s.alloc);
+    if (s.state) |st| {
+        st.deinit(s.alloc);
+        s.alloc.destroy(st);
+    }
 }
 pub fn update(s: *@This(), delta: f32) void {
     s.width = rl.getScreenWidth();
@@ -133,6 +140,8 @@ pub fn update(s: *@This(), delta: f32) void {
 }
 // alloc should be removed from draw
 pub inline fn draw(s: *@This()) void {
+    s.state_mutex.lock();
+    defer s.state_mutex.unlock();
     rl.clearBackground(s.backgroup_color);
     if (rg.button(.init(24, 24, 120, 24), "btn")) s.swapBackgroud();
     if (rg.button(.init(160, 24, 120, 24), "ball")) {
