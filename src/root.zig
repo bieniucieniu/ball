@@ -11,7 +11,7 @@ const Options = shared.Options;
 
 const TARGET_FPS = 240;
 
-pub fn run(allocator: std.mem.Allocator) !void {
+pub fn run(allocator: std.mem.Allocator, pool: *std.Thread.Pool) !void {
     var app: App = .init(allocator);
     const options = try Options.create(allocator, .{});
     if (options.help and Options.CLI) {
@@ -33,15 +33,16 @@ pub fn run(allocator: std.mem.Allocator) !void {
     }
 
     var loop: Loop = .init(TARGET_FPS);
+    var wg: std.Thread.WaitGroup = .{};
     rl.setTargetFPS(loop.framerate.current);
     app.update(loop.delta);
-    var update_thread = try std.Thread.spawn(.{}, runUpdateLoop, .{ &loop, &app });
-    // defer update_thread.detach();
-    try runRenderLoop(&loop, &app);
-    update_thread.join();
+
+    pool.spawnWg(&wg, runUpdateLoop, .{ &loop, &app });
+    pool.spawnWg(&wg, runRenderLoop, .{ &loop, &app });
+    pool.waitAndWork(&wg);
 }
 
-fn runRenderLoop(loop: *Loop, app: *App) !void {
+fn runRenderLoop(loop: *Loop, app: *App) void {
     while (!rl.windowShouldClose()) {
         rl.beginDrawing();
         defer rl.endDrawing();
@@ -51,7 +52,7 @@ fn runRenderLoop(loop: *Loop, app: *App) !void {
     }
 }
 
-fn runUpdateLoop(loop: *Loop, app: *App) !void {
+fn runUpdateLoop(loop: *Loop, app: *App) void {
     while (!rl.windowShouldClose()) {
         loop.update();
         defer loop.sleepToNext();
@@ -59,7 +60,7 @@ fn runUpdateLoop(loop: *Loop, app: *App) !void {
     }
 }
 
-fn runLoop(app: *App) !void {
+fn runLoop(app: *App) void {
     while (!rl.windowShouldClose()) {
         rl.beginDrawing();
         defer rl.endDrawing();
