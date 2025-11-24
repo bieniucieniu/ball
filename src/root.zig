@@ -11,7 +11,7 @@ const Options = shared.Options;
 
 const TARGET_FPS = 240;
 
-pub fn run(allocator: std.mem.Allocator, pool: *std.Thread.Pool) !void {
+pub fn run(allocator: std.mem.Allocator) !void {
     var app: App = .init(allocator);
     const options = try Options.create(allocator, .{});
     if (options.help and Options.CLI) {
@@ -33,20 +33,19 @@ pub fn run(allocator: std.mem.Allocator, pool: *std.Thread.Pool) !void {
     }
 
     var loop: Loop = .init(TARGET_FPS);
-    var wg: std.Thread.WaitGroup = .{};
     rl.setTargetFPS(loop.framerate.current);
     app.update(loop.delta);
 
-    pool.spawnWg(&wg, runUpdateLoop, .{ &loop, &app });
-    pool.spawnWg(&wg, runRenderLoop, .{ &loop, &app });
-    pool.waitAndWork(&wg);
+    var ut = try std.Thread.spawn(.{}, runUpdateLoop, .{ &loop, &app });
+    runRenderLoop(&loop, &app);
+    ut.join();
 }
 
 fn runRenderLoop(loop: *Loop, app: *App) void {
     while (!rl.windowShouldClose()) {
         rl.beginDrawing();
         defer rl.endDrawing();
-        rl.setWindowTitle(rl.textFormat("fps = %d tps = %f", .{ rl.getFPS(), 1 / loop.delta }));
+        rl.setWindowTitle(rl.textFormat("fps = %d tps = %.0f", .{ rl.getFPS(), 1 / loop.delta }));
         // alloc should be removed from draw
         app.draw();
     }

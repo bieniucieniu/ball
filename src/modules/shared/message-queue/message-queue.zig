@@ -1,7 +1,14 @@
 const std = @import("std");
 
+const OverflowPolicy = enum {
+    drop_oldest,
+    drop_newest,
+    none,
+};
+
 const Options = struct {
     buffer_size: usize = 1024,
+    overflow_policy: OverflowPolicy = .none,
 };
 
 const MessageQueueSendError = error{
@@ -12,6 +19,7 @@ const MessageQueueSendError = error{
 pub fn MessageQueue(comptime T: type, comptime options: Options) type {
     return struct {
         pub const Buffer = [options.buffer_size]?T;
+
         buffer: Buffer = [_]?T{null} ** options.buffer_size,
         mut: std.Thread.Mutex = .{},
         pivot: usize = 0,
@@ -26,18 +34,33 @@ pub fn MessageQueue(comptime T: type, comptime options: Options) type {
 
             return val;
         }
-        pub fn send(s: *@This(), data: T) !void {
+        pub fn send(s: *@This(), data: T) MessageQueueSendError!void {
             s.mut.lock();
             defer s.mut.unlock();
 
+            var idx = 0;
+
             for (0..s.buffer.len - 1) |i| {
-                const idx = (s.pivot + i) % s.buffer.len;
+                idx = (s.pivot + i) % s.buffer.len;
                 if (s.buffer[idx] == null) {
                     s.buffer[idx] = data;
                     return;
                 }
             }
-            return MessageQueueSendError.OutOfBuffer;
+
+            switch (options.overflow_policy) {
+                .drop_oldest => {
+                    idx = (s.pivot + s.buffer.len - 1) % s.buffer.len;
+                    s.buffer[idx] = data;
+                },
+                .drop_newest => {
+                    idx = (s.pivot + 1) % s.buffer.len;
+                    s.buffer[idx] = data;
+                },
+                .none => {
+                    return MessageQueueSendError.OutOfBuffer;
+                },
+            }
         }
         pub fn len(s: *@This()) usize {
             var count: usize = 0;

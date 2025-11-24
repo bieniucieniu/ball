@@ -19,7 +19,8 @@ const StateType = union(StateEnum) {
             .ball => |*b| b.deinit(alloc),
         }
     }
-    pub inline fn draw(s: *@This()) void {
+    pub inline fn draw(s: *@This(), bounds: rl.Rectangle) void {
+        _ = bounds;
         switch (s.*) {
             .ball => |*b| b.draw(),
         }
@@ -45,7 +46,10 @@ options: Options = .{},
 state: ?*StateType = null,
 state_mutex: std.Thread.Mutex = .{},
 backgroup_color: rl.Color = .white,
-messanger: Shared.MessageQueue(Message, .{ .buffer_size = 256 }) = .{},
+messanger: Shared.MessageQueue(Message, .{
+    .buffer_size = 256,
+    .overflow_policy = .drop_newest,
+}) = .{},
 alloc: std.mem.Allocator,
 
 const Message = union(enum) {
@@ -87,8 +91,8 @@ pub fn setState(s: *@This(), args: ?StateArgs) !void {
     };
     if (args) |t| {
         switch (t) {
-            .ball => {
-                var count = t.ball.count;
+            .ball => |b| {
+                var count = b.count;
                 if (count == 0) count = s.options.count;
 
                 var ptr = try s.alloc.create(StateType);
@@ -138,7 +142,9 @@ pub fn update(s: *@This(), delta: f32) void {
         delta,
     );
 }
-// alloc should be removed from draw
+
+const max_float_from_usize = @as(f32, @floatFromInt(std.math.maxInt(usize)));
+
 pub inline fn draw(s: *@This()) void {
     s.state_mutex.lock();
     defer s.state_mutex.unlock();
@@ -146,14 +152,22 @@ pub inline fn draw(s: *@This()) void {
     if (rg.button(.init(24, 24, 120, 24), "btn")) s.swapBackgroud();
     if (rg.button(.init(160, 24, 120, 24), "ball")) {
         s.messanger.send(.{ .set_balls = 0 }) catch {};
-        // switch (s.state) {
-        //     .ball => s.reset() catch {},
-        //     // alloc should be removed from draw
-        //     else => s.setState(alloc, .{ .ball = .{} }) catch {},
-        // }
     }
 
-    if (s.state) |state| state.draw();
+    var count: f32 = blk: {
+        if (s.state) |state| {
+            switch (state.*) {
+                .ball => |*b| break :blk @floatFromInt(b.balls.items.len),
+            }
+        }
+        break :blk 0;
+    };
+    if (rg.slider(.init(24, 56, 120, 24), "0", "1000", &count, 0, 1000) > 0) {
+        if (count > max_float_from_usize) count = max_float_from_usize;
+        s.messanger.send(.{ .set_balls = @intFromFloat(count) }) catch {};
+    }
+
+    if (s.state) |state| state.draw(.init(24, 56, 120, 24));
 }
 pub fn reset(s: *@This()) !void {
     if (s.state) |*state| try state.*.reset();
