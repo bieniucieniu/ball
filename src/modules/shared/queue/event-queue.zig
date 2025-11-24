@@ -1,22 +1,22 @@
 const std = @import("std");
 
-const OverflowPolicy = enum {
+pub const OverflowPolicy = enum {
     drop_oldest,
     drop_newest,
     none,
 };
 
-const Options = struct {
+pub const Options = struct {
     buffer_size: usize = 1024,
     overflow_policy: OverflowPolicy = .none,
 };
 
-const MessageQueueSendError = error{
+pub const EventQueueSendError = error{
     OutOfBuffer,
     Locked,
 };
 
-pub fn MessageQueue(comptime T: type, comptime options: Options) type {
+pub fn EventQueue(comptime T: type, comptime options: Options) type {
     return struct {
         pub const Buffer = [options.buffer_size]?T;
 
@@ -34,11 +34,11 @@ pub fn MessageQueue(comptime T: type, comptime options: Options) type {
 
             return val;
         }
-        pub fn send(s: *@This(), data: T) MessageQueueSendError!void {
+        pub fn send(s: *@This(), data: T) EventQueueSendError!void {
             s.mut.lock();
             defer s.mut.unlock();
 
-            var idx = 0;
+            var idx: usize = 0;
 
             for (0..s.buffer.len - 1) |i| {
                 idx = (s.pivot + i) % s.buffer.len;
@@ -58,7 +58,7 @@ pub fn MessageQueue(comptime T: type, comptime options: Options) type {
                     s.buffer[idx] = data;
                 },
                 .none => {
-                    return MessageQueueSendError.OutOfBuffer;
+                    return EventQueueSendError.OutOfBuffer;
                 },
             }
         }

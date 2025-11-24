@@ -46,13 +46,13 @@ options: Options = .{},
 state: ?*StateType = null,
 state_mutex: std.Thread.Mutex = .{},
 backgroup_color: rl.Color = .white,
-messanger: Shared.MessageQueue(Message, .{
+event_queue: Shared.Queue(Event, .{
     .buffer_size = 256,
     .overflow_policy = .drop_newest,
 }) = .{},
 alloc: std.mem.Allocator,
 
-const Message = union(enum) {
+const Event = union(enum) {
     swap_background,
     reset,
     set_balls: usize,
@@ -122,7 +122,7 @@ pub fn update(s: *@This(), delta: f32) void {
     s.width = rl.getScreenWidth();
     s.height = rl.getScreenHeight();
 
-    while (s.messanger.receive()) |msg| {
+    while (s.event_queue.receive()) |msg| {
         switch (msg) {
             .swap_background => s.swapBackgroud(),
             .reset => s.reset() catch {},
@@ -151,7 +151,7 @@ pub inline fn draw(s: *@This()) void {
     rl.clearBackground(s.backgroup_color);
     if (rg.button(.init(24, 24, 120, 24), "btn")) s.swapBackgroud();
     if (rg.button(.init(160, 24, 120, 24), "ball")) {
-        s.messanger.send(.{ .set_balls = 0 }) catch {};
+        s.event_queue.send(.{ .set_balls = 0 }) catch {};
     }
 
     var count: f32 = blk: {
@@ -164,7 +164,7 @@ pub inline fn draw(s: *@This()) void {
     };
     if (rg.slider(.init(24, 56, 120, 24), "0", "1000", &count, 0, 1000) > 0) {
         if (count > max_float_from_usize) count = max_float_from_usize;
-        s.messanger.send(.{ .set_balls = @intFromFloat(count) }) catch {};
+        s.event_queue.send(.{ .set_balls = @intFromFloat(count) }) catch {};
     }
 
     if (s.state) |state| state.draw(.init(24, 56, 120, 24));
