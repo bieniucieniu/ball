@@ -60,7 +60,8 @@ pub fn deinit(s: *@This(), alloc: std.mem.Allocator) void {
     s.balls.deinit(alloc);
 }
 pub fn updateBoundry(s: *@This(), width: i32, height: i32) void {
-    s.balls_boundry = .init(20, 64, @floatFromInt(width - 20), @floatFromInt(height - 20));
+    _ = s;
+    _ = rl.Vector4.init(20, 64, @floatFromInt(width - 20), @floatFromInt(height - 20));
 }
 pub fn update(s: *@This(), alloc: std.mem.Allocator, delta: f32) void {
     for (s.balls_sap.setQuadsAsSlice(alloc, s.balls.items.len) catch return, 0..) |*q, i| {
@@ -77,9 +78,6 @@ pub fn update(s: *@This(), alloc: std.mem.Allocator, delta: f32) void {
     for (s.balls_sap.getPairs(alloc) catch return) |pair| {
         const a, const b = pair;
         if (a.state.checkColision(&b.state, delta)) |_| {
-            // a.border_color = .blue;
-            // b.border_color = .blue;
-
             a.state.applyCollision(
                 &b.state,
                 s.restitution,
@@ -87,16 +85,23 @@ pub fn update(s: *@This(), alloc: std.mem.Allocator, delta: f32) void {
         }
     }
 }
-pub inline fn draw(s: *@This()) void {
-    const boundry: rl.Rectangle = .init(
-        s.balls_boundry.x,
-        s.balls_boundry.y,
-        s.balls_boundry.z - s.balls_boundry.x,
-        s.balls_boundry.w - s.balls_boundry.y,
-    );
+pub inline fn draw(s: *@This(), bounds: rl.Rectangle) void {
+    const scale = blk: {
+        const scale_w = bounds.width / @as(f32, @floatFromInt(s.width));
+        const scale_h = bounds.height / @as(f32, @floatFromInt(s.height));
 
-    rl.drawRectangleLinesEx(boundry, 2, .gray);
+        break :blk if (scale_w < scale_h) scale_w else scale_h;
+    };
+    const offset = rl.Vector2.init(bounds.x, bounds.y);
+
+    rl.drawRectangleLinesEx(.init(
+        offset.x,
+        offset.y,
+        @as(f32, @floatFromInt(s.width)) * scale,
+        @as(f32, @floatFromInt(s.height)) * scale,
+    ), 2, .gray);
+
     for (s.balls.items) |*ball| {
-        ball.draw();
+        ball.draw(offset, scale);
     }
 }

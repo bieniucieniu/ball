@@ -20,15 +20,13 @@ const StateType = union(StateEnum) {
         }
     }
     pub inline fn draw(s: *@This(), bounds: rl.Rectangle) void {
-        _ = bounds;
         switch (s.*) {
-            .ball => |*b| b.draw(),
+            .ball => |*b| b.draw(bounds),
         }
     }
-    pub fn update(s: *@This(), alloc: std.mem.Allocator, boundry: rl.Vector4, delta: f32) void {
+    pub fn update(s: *@This(), alloc: std.mem.Allocator, delta: f32) void {
         switch (s.*) {
             .ball => |*b| {
-                b.balls_boundry = boundry;
                 b.update(alloc, delta);
             },
         }
@@ -131,16 +129,7 @@ pub fn update(s: *@This(), delta: f32) void {
         }
     } else {}
 
-    if (s.state) |state| state.update(
-        s.alloc,
-        .init(
-            20,
-            64,
-            @floatFromInt(s.width - 20),
-            @floatFromInt(s.height - 20),
-        ),
-        delta,
-    );
+    if (s.state) |state| state.update(s.alloc, delta);
 }
 
 const max_float_from_usize = @as(f32, @floatFromInt(std.math.maxInt(usize)));
@@ -167,7 +156,12 @@ pub inline fn draw(s: *@This()) void {
         s.event_queue.send(.{ .set_balls = @intFromFloat(count) }) catch {};
     }
 
-    if (s.state) |state| state.draw(.init(24, 56, 120, 24));
+    if (s.state) |state| state.draw(.init(
+        24,
+        96,
+        @floatFromInt(s.width - 48),
+        @floatFromInt(s.height - (96 + 24)),
+    ));
 }
 pub fn reset(s: *@This()) !void {
     if (s.state) |*state| try state.*.reset();

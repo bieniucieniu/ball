@@ -223,11 +223,11 @@ pub fn update(s: *@This(), delta: f32) void {
 pub fn init(boundry: *rl.Vector4) @This() {
     return .{ .state = .init(boundry) };
 }
-pub fn draw(s: *@This()) void {
+pub fn draw(s: *@This(), offset: rl.Vector2, scale: f32) void {
     rl.drawRing(
-        s.state.position,
-        s.state.width,
-        s.state.width + s.border_width,
+        s.state.position.scale(scale).add(offset),
+        s.state.width * scale,
+        (s.state.width + s.border_width) * scale,
         0,
         360,
         12,

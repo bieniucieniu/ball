@@ -4,7 +4,7 @@ pub const Quad = @import("quad.zig");
 
 pub fn TagedSap(T: type) type {
     return struct {
-        const Q = Quad.TagedQuad(T);
+        pub const Q = Quad.TagedQuad(T);
 
         quads: []Q,
         all_pairs: std.ArrayList([2]T),
