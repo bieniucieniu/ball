@@ -75,7 +75,9 @@ pub const State = struct {
         const mouse_down = rl.isMouseButtonDown(.left);
         if (mouse_down) {
             const pos = s.position.scale(scale).add(offset);
-            if ((mouse.distanceSqr(pos) < s.width * s.width) or s.is_hold) {
+            var d = s.width * scale;
+            d = d * d;
+            if ((mouse.distanceSqr(pos) < d) or s.is_hold) {
                 s.force = mouse.subtract(pos);
                 s.is_hold = true;
             }
