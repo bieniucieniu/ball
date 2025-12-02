@@ -17,3 +17,4 @@ pub const Queue = queue.EventQueue;
 pub const QueueSendError = queue.EventQueueSendError;
 pub const QueueOptions = queue.Options;
 pub const OverflowPolicy = queue.OverflowPolicy;
+pub const mouse = @import("shared/mouse/mouse.zig");

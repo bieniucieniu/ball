@@ -10,14 +10,16 @@ height: i32 = 450,
 friction: f32 = 0.01,
 balls: std.ArrayList(Ball),
 balls_mal: std.MultiArrayList(Ball) = .{},
-balls_boundry: rl.Vector4 = .init(0, 0, 800, 450),
+balls_boundry: rl.Rectangle = .init(0, 0, 800, 450),
 balls_sap: Shared.Sap.TagedSap(*Ball),
 restitution: f32 = 1,
+draw_offset: rl.Vector2 = .init(0, 0),
+draw_scale: f32 = 1,
 pub fn createRandomBall(s: *@This(), rand: *const std.Random) Ball {
     var ball: Ball = .init(&s.balls_boundry);
     ball.state.position = .init(
-        (s.balls_boundry.x + s.balls_boundry.z) / 2,
-        (s.balls_boundry.y + s.balls_boundry.w) / 2,
+        s.balls_boundry.x + s.balls_boundry.width / 2,
+        s.balls_boundry.y + s.balls_boundry.height / 2,
     );
     ball.state.force = rl.Vector2.one().scale(64).rotate(rand.float(f32) * 360);
     ball.state.mass = (rand.float(f32) * 600) + 600;
@@ -66,8 +68,7 @@ pub fn updateBoundry(s: *@This(), width: i32, height: i32) void {
 pub fn update(s: *@This(), alloc: std.mem.Allocator, delta: f32) void {
     for (s.balls_sap.setQuadsAsSlice(alloc, s.balls.items.len) catch return, 0..) |*q, i| {
         const b = &s.balls.items[i];
-        // b.border_color = .gray;
-        b.update(delta);
+        b.update(s.draw_offset, s.draw_scale, delta);
 
         const x = b.state.position.x;
         const w = b.state.width;
@@ -93,6 +94,9 @@ pub inline fn draw(s: *@This(), bounds: rl.Rectangle) void {
         break :blk if (scale_w < scale_h) scale_w else scale_h;
     };
     const offset = rl.Vector2.init(bounds.x, bounds.y);
+
+    s.draw_offset = offset;
+    s.draw_scale = scale;
 
     rl.drawRectangleLinesEx(.init(
         offset.x,

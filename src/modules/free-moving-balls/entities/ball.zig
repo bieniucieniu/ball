@@ -4,6 +4,7 @@ const Shared = @import("../../shared.zig");
 const Quad = @import("../../shared/sap/quad.zig");
 const Loop = Shared.Loop;
 const ray = Shared.Raycast;
+const m = Shared.mouse;
 
 state: State,
 color: rl.Color = .white,
@@ -15,40 +16,24 @@ pub const State = struct {
     force: rl.Vector2 = .init(0, 0),
     width: f32 = 12,
     mass: f32 = 30,
-    boundry: *rl.Vector4,
+    bounds: *rl.Rectangle,
     is_hold: bool = false,
-    pub fn init(boundry: *rl.Vector4) @This() {
-        return .{ .boundry = boundry };
-    }
-    inline fn getMouseX(mouse: rl.Vector2, boundry: rl.Vector4) f32 {
-        return if (mouse.x <= boundry.x)
-            boundry.x
-        else if (mouse.x >= boundry.z)
-            boundry.z
-        else
-            mouse.x;
-    }
-    inline fn getMouseY(mouse: rl.Vector2, boundry: rl.Vector4) f32 {
-        return if (mouse.y <= boundry.y)
-            boundry.y
-        else if (mouse.y >= boundry.w)
-            boundry.w
-        else
-            mouse.y;
+    pub fn init(boundry: *rl.Rectangle) @This() {
+        return .{ .bounds = boundry };
     }
 
     inline fn boundryLeft(s: *@This(), target: rl.Vector2) bool {
-        return target.x - s.width <= s.boundry.x;
+        return target.x - s.width <= s.bounds.x;
     }
     inline fn boundryRight(s: *@This(), target: rl.Vector2) bool {
-        return target.x + s.width >= s.boundry.z;
+        return target.x + s.width >= s.bounds.x + s.bounds.width;
     }
 
     inline fn boundryTop(s: *@This(), target: rl.Vector2) bool {
-        return target.y - s.width <= s.boundry.y;
+        return target.y - s.width <= s.bounds.y;
     }
     inline fn boundryBottom(s: *@This(), target: rl.Vector2) bool {
-        return target.y + s.width >= s.boundry.w;
+        return target.y + s.width >= s.bounds.y + s.bounds.height;
     }
 
     const BoundriesCrossed = packed struct(u4) {
@@ -74,23 +59,24 @@ pub const State = struct {
         };
     }
 
-    fn getMouse(mouse: rl.Vector2, boundry: rl.Vector4) rl.Vector2 {
-        return rl.Vector2.init(
-            getMouseX(mouse, boundry),
-            getMouseY(mouse, boundry),
-        );
-    }
-
-    inline fn getScaler(s: *@This(), delta: f32) f32 {
+    inline fn getDeltaScaler(s: *@This(), delta: f32) f32 {
         const per_s = delta * (1_000 / s.mass);
         return per_s;
     }
-    fn applyMouseAction(s: *@This()) void {
-        const mouse = getMouse(rl.getMousePosition(), s.boundry.*);
+
+    fn applyMouseAction(s: *@This(), offset: rl.Vector2, scale: f32) void {
+        const bounds = rl.Rectangle.init(
+            offset.x + s.bounds.x,
+            offset.y + s.bounds.y,
+            s.bounds.width * scale,
+            s.bounds.height * scale,
+        );
+        const mouse = m.getMouse(bounds);
         const mouse_down = rl.isMouseButtonDown(.left);
         if (mouse_down) {
-            if ((mouse.distanceSqr(s.position) < s.width * s.width) or s.is_hold) {
-                s.force = mouse.subtract(s.position);
+            const pos = s.position.scale(scale).add(offset);
+            if ((mouse.distanceSqr(pos) < s.width * s.width) or s.is_hold) {
+                s.force = mouse.subtract(pos);
                 s.is_hold = true;
             }
         } else s.is_hold = false;
@@ -101,41 +87,15 @@ pub const State = struct {
         if ((crossed.top and s.force.y < 0) or (crossed.bottom and s.force.y > 0)) s.force.y = -s.force.y;
 
         if (crossed.left) {
-            target.x = s.boundry.x + s.width;
+            target.x = s.bounds.x + s.width;
         } else if (crossed.right) {
-            target.x = s.boundry.z - s.width;
+            target.x = s.bounds.x + s.bounds.width - s.width;
         }
         if (crossed.top) {
-            target.y = s.boundry.y + s.width;
+            target.y = s.bounds.y + s.width;
         } else if (crossed.bottom) {
-            target.y = s.boundry.w - s.width;
+            target.y = s.bounds.y + s.bounds.height - s.width;
         }
-        // return .{
-        //     .{
-        //         .x = if ((crossed.left and s.force.x < 0) or (crossed.right and s.force.x > 0)) -s.force.x else s.force.x,
-        //         .y = if ((crossed.top and s.force.y < 0) or (crossed.bottom and s.force.y > 0)) -s.force.y else s.force.x,
-        //     },
-        //     .{
-        //         .x = if (crossed.left)
-        //             s.boundry.x + s.width
-        //         else if (crossed.right)
-        //             s.boundry.z - s.width
-        //         else
-        //             target.x,
-        //         .y = if (crossed.top)
-        //             s.boundry.y + s.width
-        //         else if (crossed.bottom)
-        //             s.boundry.w - s.width
-        //         else
-        //             target.y,
-        //     },
-        // };
-
-        //std.debug.print("{}\n{}\n{}\n{}\n\n", .{ crossed, target.*, s.boundry, s.loopstate });
-    }
-
-    fn applyColision(s: *@This(), other: *@This()) void {
-        s.position.subtract(other.*);
     }
     pub fn checkIntersection(s: *@This(), other: *@This()) ?rl.Vector2 {
         const d = s.width + other.width;
@@ -183,7 +143,7 @@ pub const State = struct {
         return vec.scale(f);
     }
     pub fn getNextPosition(s: *@This(), delta: f32) rl.Vector2 {
-        const scaler = s.getScaler(delta);
+        const scaler = s.getDeltaScaler(delta);
         const vec = s.force.scale(scaler);
         return s.position.add(vec);
     }
@@ -213,14 +173,14 @@ pub const State = struct {
         b.force = b.force.subtract(impulse.scale(im_b));
     }
 };
-pub fn update(s: *@This(), delta: f32) void {
-    s.state.applyMouseAction();
+pub fn update(s: *@This(), offset: rl.Vector2, scale: f32, delta: f32) void {
+    s.state.applyMouseAction(offset, scale);
     var target = s.state.getNextPosition(delta);
     s.state.applyBoundryColisions(&target);
     s.state.position = target;
 }
 
-pub fn init(boundry: *rl.Vector4) @This() {
+pub fn init(boundry: *rl.Rectangle) @This() {
     return .{ .state = .init(boundry) };
 }
 pub fn draw(s: *@This(), offset: rl.Vector2, scale: f32) void {
