@@ -9,7 +9,7 @@ const meta = std.meta;
 const bufPrint = std.fmt.bufPrint;
 const Options = shared.Options;
 
-const TARGET_FPS = 240;
+const TARGET_FPS = std.math.maxInt(i32);
 
 pub fn run(allocator: std.mem.Allocator) !void {
     var app: App = .init(allocator);

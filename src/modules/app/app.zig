@@ -9,7 +9,7 @@ const BallsState = @import("../free-moving-balls/free-moving-balls.zig");
 
 const StateEnum = enum { ball };
 const StateArgs = union(StateEnum) {
-    ball: struct { count: usize = 0 },
+    ball: struct { count: ?usize = null },
 };
 const StateType = union(StateEnum) {
     ball: BallsState,
@@ -90,8 +90,7 @@ pub fn setState(s: *@This(), args: ?StateArgs) !void {
     if (args) |t| {
         switch (t) {
             .ball => |b| {
-                var count = b.count;
-                if (count == 0) count = s.options.count;
+                const count = if (b.count) |c| c else s.options.count;
 
                 var ptr = try s.alloc.create(StateType);
                 errdefer s.alloc.destroy(ptr);
@@ -151,7 +150,8 @@ pub inline fn draw(s: *@This()) void {
         }
         break :blk 0;
     };
-    if (rg.slider(.init(24, 56, 120, 24), "0", "1000", &count, 0, 1000) > 0) {
+
+    if (rg.slider(.init(24, 56, 120, 24), rl.textFormat("%d", .{count}), "1000", &count, 0, 1000) > 0) {
         if (count > max_float_from_usize) count = max_float_from_usize;
         s.event_queue.send(.{ .set_balls = @intFromFloat(count) }) catch {};
     }
