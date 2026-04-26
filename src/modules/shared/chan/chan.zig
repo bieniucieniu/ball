@@ -58,13 +58,13 @@ pub fn BufferedChanUnmanaged(comptime T: type, comptime bufSize: u8) type {
         pub const bufType = [bufSize]?T;
         buf: bufType = [_]?T{null} ** bufSize,
         closed: bool = false,
-        mut: std.Thread.Mutex = .{},
+        mut: std.Io.Mutex = .{},
         recvQ: std.ArrayListUnmanaged(*Receiver) = .{},
         sendQ: std.ArrayListUnmanaged(*Sender) = .{},
 
         pub const Receiver = struct {
-            mut: std.Thread.Mutex = std.Thread.Mutex{},
-            cond: std.Thread.Condition = std.Thread.Condition{},
+            mut: std.Io.Mutex = .{},
+            cond: std.Io.Condition = .{},
             data: ?T = null,
 
             fn putDataAndSignal(self: *@This(), data: T) void {
@@ -74,8 +74,8 @@ pub fn BufferedChanUnmanaged(comptime T: type, comptime bufSize: u8) type {
         };
 
         pub const Sender = struct {
-            mut: std.Thread.Mutex = std.Thread.Mutex{},
-            cond: std.Thread.Condition = std.Thread.Condition{},
+            mut: std.Io.Mutex = .{},
+            cond: std.Io.Condition = .{},
             data: T,
 
             fn getDataAndSignal(self: *@This()) T {

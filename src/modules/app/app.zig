@@ -42,13 +42,14 @@ width: i32 = 800,
 height: i32 = 450,
 options: Options = .{},
 state: ?*StateType = null,
-state_mutex: std.Thread.Mutex = .{},
+state_mutex: std.Io.Mutex = .init,
 backgroup_color: rl.Color = .white,
 event_queue: Shared.Queue(Event, .{
     .buffer_size = 256,
     .overflow_policy = .drop_newest,
 }) = .{},
 alloc: std.mem.Allocator,
+io: std.Io,
 
 const Event = union(enum) {
     swap_background,
@@ -61,13 +62,13 @@ pub fn swapBackgroud(self: *@This()) void {
     const eqls = meta.eql(self.backgroup_color, .white);
     self.backgroup_color = if (eqls) .black else .white;
 }
-pub fn init(alloc: std.mem.Allocator) @This() {
-    return .{ .alloc = alloc };
+pub fn init(alloc: std.mem.Allocator, io: std.Io) @This() {
+    return .{ .alloc = alloc, .io = io };
 }
 
 pub fn configurate(s: *@This(), options: Options) !void {
     if (options.help) {
-        try Options.printHelp(.stdout());
+        try Options.printHelp(s.io, .stdout());
         std.process.exit(0);
         return;
     }
@@ -79,8 +80,8 @@ pub fn configurate(s: *@This(), options: Options) !void {
     }
 }
 pub fn setState(s: *@This(), args: ?StateArgs) !void {
-    s.state_mutex.lock();
-    defer s.state_mutex.unlock();
+    try s.state_mutex.lock(s.io);
+    defer s.state_mutex.unlock(s.io);
 
     const prev = s.state;
     defer if (prev) |p| {

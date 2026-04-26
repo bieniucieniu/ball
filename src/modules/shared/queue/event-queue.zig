@@ -21,7 +21,7 @@ pub fn EventQueue(comptime T: type, comptime options: Options) type {
         pub const Buffer = [options.buffer_size]?T;
 
         buffer: Buffer = [_]?T{null} ** options.buffer_size,
-        mut: std.Thread.Mutex = .{},
+        mut: std.Io.Mutex = .init,
         first: usize = 0,
 
         pub fn receive(s: *@This()) ?T {

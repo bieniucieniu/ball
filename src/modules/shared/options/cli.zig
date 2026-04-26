@@ -17,20 +17,19 @@ const params = clap.parseParamsComptime(
     \\-m, --mode <mode>     mode
     \\--single-threaded     single threaded
 );
-
 count: usize = 2_000,
 help: bool = false,
 mode: Modes = .none,
 single_threaded: bool = false,
 
-pub fn create(allocator: std.mem.Allocator, defaults: @This()) !@This() {
-    var s: @This() = defaults;
-    const res = clap.parse(clap.Help, &params, parsers, .{
+pub fn create(gpa: std.mem.Allocator, args: std.process.Args, init: @This()) !@This() {
+    var s = init;
+    const res = clap.parse(clap.Help, &params, parsers, args, .{
         .diagnostic = &diag,
-        .allocator = allocator,
+        .allocator = gpa,
         .assignment_separators = "= ",
     }) catch |err| {
-        try diag.reportToFile(.stderr(), err);
+        try diag.reportToFile(.failing, .stderr(), err);
         return err;
     };
     defer res.deinit();
@@ -43,6 +42,6 @@ pub fn create(allocator: std.mem.Allocator, defaults: @This()) !@This() {
     return s;
 }
 
-pub fn printHelp(file: std.fs.File) !void {
-    return clap.helpToFile(file, clap.Help, &params, .{});
+pub fn printHelp(io: std.Io, file: std.Io.File) !void {
+    return clap.helpToFile(io, file, clap.Help, &params, .{});
 }

@@ -6,12 +6,12 @@ pub const CLI = false;
 count: usize = 2_000,
 help: bool = false,
 mode: Modes = .none,
-single_threaded: bool = true,
+single_threaded: bool = false,
 
-pub fn create(_: std.mem.Allocator, defaults: @This()) !@This() {
+pub fn create(s: @This()) !@This() {
     std.debug.print("mock\n", .{});
-    return defaults;
+    return s;
 }
-pub fn printHelp(_: std.fs.File) !void {
+pub fn printHelp(_: std.Io, _: std.fs.File) !void {
     return;
 }

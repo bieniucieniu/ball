@@ -25,7 +25,7 @@
     .fingerprint = 0x7432485bf888b833, // Changing this has security and trust implications.
     // Tracks the earliest Zig version that the package considers to be a
     // supported use case.
-    .minimum_zig_version = "0.15.1",
+    .minimum_zig_version = "0.16.0",
     // This field is optional.
     // Each dependency must either provide a `url` and `hash`, or a `path`.
     // `zig build --fetch` can be used to fetch all dependencies of a package, recursively.
@@ -33,12 +33,12 @@
     // internet connectivity.
     .dependencies = .{
         .raylib_zig = .{
-            .url = "git+https://github.com/raylib-zig/raylib-zig?ref=devel#0248dc6e9884f83d959a9775756db577f9005c40",
-            .hash = "raylib_zig-5.6.0-dev-KE8REOJCBQBByfL-ndaNNt96nm9ESNPFTrzfEeCWTpEY",
+            .url = "git+https://github.com/raylib-zig/raylib-zig?ref=devel#47766db82f30aece1d72c935edc71bc33d268fd6",
+            .hash = "raylib_zig-6.0.0-KE8REL9kBQBRwC49KhXw7hPBn22d7UjDiOdpMInX0DLE",
         },
         .clap = .{
-            .url = "git+https://github.com/Hejsil/zig-clap#b7e3348ed60f99ba32c75aa707ff7c87adc31b36",
-            .hash = "clap-0.11.0-oBajB-TnAQC7yPLnZRT5WzHZ_4Ly4dX2OILskli74b9H",
+            .url = "git+https://github.com/Hejsil/zig-clap#8d97efa1ee1e575443c7888d5c38e1c3fc145cf5",
+            .hash = "clap-0.12.0-oBajB7foAQDqlSwaSG5g0yq7xGbQARUsBk5T64gAOqP5",
         },
         .emsdk = .{
             .url = "git+https://github.com/emscripten-core/emsdk?ref=4.0.9#3bcf1dcd01f040f370e10fe673a092d9ed79ebb5",

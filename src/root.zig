@@ -11,11 +11,11 @@ const Options = shared.Options;
 
 const TARGET_FPS = std.math.maxInt(i32);
 
-pub fn run(allocator: std.mem.Allocator) !void {
-    var app: App = .init(allocator);
-    const options = try Options.create(allocator, .{});
+pub fn run(io: std.Io, gpa: std.mem.Allocator, args: std.process.Args) !void {
+    var app: App = .init(gpa, io);
+    const options = try Options.create(gpa, args, .{});
     if (options.help and Options.CLI) {
-        try Options.printHelp(.stdout());
+        try Options.printHelp(io, .stdout());
         std.process.exit(0);
         return;
     }
